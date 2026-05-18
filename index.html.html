@@ -1,0 +1,2159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR 자동화 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <style>
+    .page { display:none; }
+    .page.active { display:block; }
+
+
+
+
+    .org-table { 
+        border-collapse:collapse; 
+        width:100%; 
+        border:1px solid #000;
+    }
+
+
+
+
+    /* 헤더 */
+    .org-table thead th {
+        background:#f2f2f2;
+        color:#000;
+        font-weight:700;
+        text-align:center;
+        vertical-align:middle;
+        padding:6px;
+        font-size:12px;
+        position:sticky;
+        top:0;
+        z-index:10;
+        border:1px solid #000;
+    }
+    
+    /* TO/PO 병합 셀 좌우 굵은선 */
+    .org-table thead th[colspan="4"] {
+        border-left:2px solid #000;
+        border-right:2px solid #000;
+    }
+    /* TO/PO 시작 셀 굵은 세로선 */
+    .org-table td.cell-to-start { border-left:2px solid #000; }
+    .org-table td.cell-po-start { border-left:2px solid #000; }
+
+
+
+
+    /* 조직명 셀 */
+    .org-table td.cell-bumun,
+    .org-table td.cell-bonbu,
+    .org-table td.cell-sil,
+    .org-table td.cell-team {
+        text-align:center;
+        vertical-align:top;
+        padding:5px 6px;
+        font-size:12px;
+        border:1px solid #000;
+    }
+    .org-table td.cell-bumun { font-weight:700; border-right:2px solid #000; }
+    .org-table td.cell-bonbu { font-weight:600; }
+    .org-table td.cell-sil   { font-weight:500; }
+    .org-table td.cell-team  { font-weight:400; border-right:2px solid #000; }
+
+
+        /* 빈 셀 */
+    .org-table td.cell-empty {
+        background:white !important;
+        padding:5px 6px;
+        border:none;
+    }
+    
+    /* bumun-start 행은 상단 굵은선 */
+    .org-table tr.bumun-start td {
+        border-top:2px solid #000 !important;
+    }
+    /* bonbu-start 행은 상단 구분선 */
+    .org-table tr.bonbu-start td {
+        border-top:2px solid #000 !important;
+    }
+
+
+    /* 숫자 셀 */
+    .org-table td.cell-num {
+        text-align:center;
+        font-size:12px;
+        padding:4px 8px;
+        border:1px solid #000;
+        color:#374151;
+    }
+    .org-table td.cell-to-total {
+        text-align:center;
+        font-weight:700;
+        color:#1d4ed8;
+        padding:4px 8px;
+        border:1px solid #000;
+        border-right:2px solid #000;
+    }
+    .org-table td.cell-po-total {
+        text-align:center;
+        font-weight:700;
+        color:#166534;
+        padding:4px 8px;
+        border:1px solid #000;
+        border-right:2px solid #000;
+    }
+    .org-table td.cell-shortage-pos {
+        text-align:center;
+        color:#dc2626;
+        padding:4px 8px;
+        border:1px solid #000;
+        border-left:2px solid #000;
+    }
+    .org-table td.cell-shortage-zero {
+        text-align:center;
+        color:#6b7280;
+        padding:4px 8px;
+        border:1px solid #000;
+        border-left:2px solid #000;
+    }
+    .org-table td.cell-shortage-neg {
+        text-align:center;
+        color:#2563eb;
+        padding:4px 8px;
+        border:1px solid #000;
+        border-left:2px solid #000;
+    }
+
+
+
+
+    /* 계 행 */
+    .org-table tr.row-subtotal-sil td   { background:#f3f4f6; }
+    .org-table tr.row-subtotal-bonbu td { background:#dbeafe; border-bottom:2px solid #000; }
+    .org-table tr.row-subtotal-bumun td { background:#fef9c3; border-bottom:2px solid #000; }
+
+    /* 같은 실 내 팀 행 사이 얇은 구분선 */
+    .org-table tr.hair-top td { border-top:1px solid #d1d5db !important; }
+
+
+
+
+    /* 계 행 조직명 볼드 */
+    .org-table tr.row-subtotal-sil td.cell-team,
+    .org-table tr.row-subtotal-bonbu td.cell-team,
+    .org-table tr.row-subtotal-bumun td.cell-team { font-weight:700; }
+
+
+
+
+    /* 계 행 결원 볼드 */
+    .org-table tr.row-subtotal-sil   td.cell-shortage-pos,
+    .org-table tr.row-subtotal-sil   td.cell-shortage-zero,
+    .org-table tr.row-subtotal-sil   td.cell-shortage-neg,
+    .org-table tr.row-subtotal-bonbu td.cell-shortage-pos,
+    .org-table tr.row-subtotal-bonbu td.cell-shortage-zero,
+    .org-table tr.row-subtotal-bonbu td.cell-shortage-neg,
+    .org-table tr.row-subtotal-bumun td.cell-shortage-pos,
+    .org-table tr.row-subtotal-bumun td.cell-shortage-zero,
+    .org-table tr.row-subtotal-bumun td.cell-shortage-neg { font-weight:700; }
+
+
+
+
+    /* 헤더 두 번째 행 하단 이중선 */
+    .org-table thead tr:nth-child(2) th {
+        border-bottom:3px double #000;
+    }
+
+    /* 전사 합계 */
+    .org-table tr.row-total td {
+        background:#f2f2f2;
+        font-weight:800;
+        font-size:13px;
+        border:1px solid #000;
+        border-top:3px double #000;
+        border-bottom:3px double #000;
+    }
+    /* ── 주간보고 인력현황 ── */
+    .weekly-table { border-collapse:collapse; width:100%; font-size:12px; }
+    .weekly-table th, .weekly-table td { border:1px solid #9ca3af; text-align:center; padding:4px 8px; vertical-align:middle; white-space:nowrap; }
+    .weekly-table thead tr:first-child th { background:#4472C4; color:white; font-weight:700; border-color:#2F5496; }
+    .weekly-table thead tr:nth-child(2) th { background:#BDD7EE; font-weight:700; border-bottom:2px solid #000; }
+    .weekly-table tr.wrow-bumun td { background:#E2EFDA; font-weight:700; border-top:2px solid #000; border-bottom:1px solid #6b9e6e; text-align:left; padding-left:10px; font-size:12px; }
+    .weekly-table tr.wrow-group td { background:#f3f4f6; font-weight:600; text-align:left; padding-left:22px; font-size:11px; border-top:1px solid #d1d5db; }
+    .weekly-table tr.wrow-subtotal td { background:#FFF2CC; font-weight:700; border-top:1px solid #c8a800; border-bottom:2px solid #000; }
+    .weekly-table tr.wrow-total td { background:#FFD966; font-weight:800; border-top:3px double #000; border-bottom:3px double #000; }
+    .weekly-table td.wneg { color:#dc2626; font-weight:600; }
+    .weekly-table td.wpos { color:#2563eb; font-weight:600; }
+    </style>
+</head>
+<body class="bg-gray-50">
+
+
+
+
+<!-- 홈 페이지 -->
+<div id="page-home" class="page active">
+    <div class="min-h-screen flex items-center justify-center p-8">
+        <div class="max-w-5xl w-full">
+            <div class="text-center mb-12">
+                <i class="fas fa-briefcase text-blue-600 text-6xl mb-4"></i>
+                <h1 class="text-4xl font-bold text-gray-800 mb-3">HR 자동화 시스템</h1>
+                <p class="text-gray-600 text-lg">사용할 기능을 선택하세요</p>
+            </div>
+            <div class="grid md:grid-cols-2 gap-8">
+                <div id="btn-headcount" class="cursor-pointer">
+                    <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-2xl transition-shadow border-2 border-transparent hover:border-blue-500">
+                        <div class="text-center">
+                            <i class="fas fa-users text-blue-600 text-5xl mb-4"></i>
+                            <h2 class="text-2xl font-bold text-gray-800 mb-3">부서별 인력현황</h2>
+                            <p class="text-gray-600 mb-4">사원명부를 업로드하여 부서별 인력현황을 자동으로 집계합니다</p>
+                            <div class="bg-blue-50 rounded-lg p-4 text-left">
+                                <p class="text-sm text-gray-700 font-semibold mb-2">주요 기능:</p>
+                                <ul class="text-sm text-gray-600 space-y-1">
+                                    <li>* 부문/본부/실/팀별 인원 집계</li>
+                                    <li>* TO/PO 자동 계산</li>
+                                    <li>* 셀 병합 계층 구조 표시</li>
+                                    <li>* Excel 다운로드</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="btn-weekly" class="cursor-pointer">
+                    <div class="bg-white rounded-xl shadow-lg p-8 hover:shadow-2xl transition-shadow border-2 border-transparent hover:border-green-500">
+                        <div class="text-center">
+                            <i class="fas fa-chart-bar text-green-600 text-5xl mb-4"></i>
+                            <h2 class="text-2xl font-bold text-gray-800 mb-3">주간보고 인력현황</h2>
+                            <p class="text-gray-600 mb-4">당월·전월말 사원명부로 직책별 인원을 집계하여 주간보고 자료를 만듭니다</p>
+                            <div class="bg-green-50 rounded-lg p-4 text-left">
+                                <p class="text-sm text-gray-700 font-semibold mb-2">주요 기능:</p>
+                                <ul class="text-sm text-gray-600 space-y-1">
+                                    <li>* 직책별(부문장/본부장/실장/팀장/팀원) 집계</li>
+                                    <li>* 당월·전월 비교 및 전월대비 표시</li>
+                                    <li>* TO 대비 현황</li>
+                                    <li>* Excel 다운로드 (PPT 붙여넣기용)</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-8 text-center">
+                <button id="btn-settings" class="inline-block bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg transition-colors">
+                    <i class="fas fa-cog mr-2"></i>설정 관리
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+<!-- 부서별 인력현황 페이지 -->
+<div id="page-headcount" class="page">
+    <div class="bg-white shadow-sm px-6 py-3 flex items-center justify-between" style="height:52px;">
+        <div class="flex items-center gap-3">
+            <button onclick="showPage('home')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-home"></i></button>
+            <span class="text-gray-300">/</span>
+            <h1 class="text-lg font-bold text-gray-800"><i class="fas fa-users text-blue-600 mr-2"></i>부서별 인력현황</h1>
+        </div>
+        <div class="flex gap-2">
+            <button id="refreshTree" class="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg">
+                <i class="fas fa-sync-alt mr-1"></i>새로고침
+            </button>
+            <button id="btn-settings-2" class="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700">
+                <i class="fas fa-cog mr-1"></i>TO 설정
+            </button>
+        </div>
+    </div>
+    <div style="display:flex;height:calc(100vh - 52px);">
+        <div style="flex:1;overflow:auto;padding:16px;">
+            <div class="bg-white rounded-xl shadow-md" style="overflow:hidden;">
+                <div style="padding:10px 16px;border-bottom:1px solid #e5e7eb;background:#f9fafb;display:flex;align-items:center;justify-content:space-between;">
+                    <span class="font-bold text-gray-700 text-sm"><i class="fas fa-sitemap mr-2 text-blue-500"></i>조직 구조 및 인력현황</span>
+                    <span class="text-xs text-gray-400">부문 본부 실 셀 병합 적용</span>
+                </div>
+                <div style="overflow:auto;">
+                    <table class="org-table" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <th style="width:120px;" rowspan="2">부문</th>
+                                <th style="width:120px;" rowspan="2">본부</th>
+                                <th style="width:110px;" rowspan="2">실/사업부</th>
+                                <th style="width:120px;" rowspan="2">팀</th>
+                                <th colspan="4">TO</th>
+                                <th colspan="4">PO</th>
+                                <th style="width:62px;" rowspan="2">결원</th>
+                            </tr>
+                            <tr>
+                                <th style="width:55px;">임원/정규직</th>
+                                <th style="width:55px;">계약직</th>
+                                <th style="width:55px;">파견직</th>
+                                <th style="width:62px;">계</th>
+                                <th style="width:55px;">임원/정규직</th>
+                                <th style="width:55px;">계약직</th>
+                                <th style="width:55px;">파견직</th>
+                                <th style="width:62px;">계</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orgTableBody">
+                            <tr><td colspan="13" style="text-align:center;padding:48px;color:#9ca3af;">조직 데이터가 없습니다.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div style="width:240px;background:white;border-left:1px solid #e5e7eb;display:flex;flex-direction:column;overflow-y:auto;">
+            <div style="padding:16px;border-bottom:1px solid #f3f4f6;">
+                <p class="text-sm font-bold text-gray-700 mb-3"><i class="fas fa-upload text-green-500 mr-1"></i>사원명부 업로드</p>
+                <div id="dropZone" style="border:2px dashed #d1d5db;border-radius:8px;padding:16px;text-align:center;cursor:pointer;">
+                    <i class="fas fa-cloud-upload-alt" style="font-size:24px;color:#9ca3af;display:block;margin-bottom:4px;"></i>
+                    <span style="font-size:11px;color:#6b7280;">.xls / .xlsx</span>
+                    <input type="file" id="fileInput" accept=".xls,.xlsx" style="display:none;">
+                </div>
+                <div id="fileInfo" style="display:none;margin-top:8px;padding:8px;background:#eff6ff;border-radius:8px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;">
+                        <div style="display:flex;align-items:center;min-width:0;">
+                            <i class="fas fa-file-excel" style="color:#3b82f6;margin-right:6px;flex-shrink:0;"></i>
+                            <div style="min-width:0;">
+                                <p id="fileName" style="font-size:11px;font-weight:600;color:#1f2937;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></p>
+                                <p id="fileSize" style="font-size:10px;color:#6b7280;"></p>
+                            </div>
+                        </div>
+                        <button id="removeFile" style="color:#f87171;background:none;border:none;cursor:pointer;flex-shrink:0;margin-left:4px;"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <button id="uploadBtn" disabled style="width:100%;margin-top:10px;background:#16a34a;color:white;border:none;padding:8px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;opacity:0.4;">
+                    <i class="fas fa-calculator" style="margin-right:4px;"></i>PO 계산하기
+                </button>
+            </div>
+            <div style="padding:16px;border-bottom:1px solid #f3f4f6;">
+                <p class="text-sm font-bold text-gray-700 mb-3"><i class="fas fa-chart-bar text-blue-500 mr-1"></i>현황 요약</p>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#f9fafb;border-radius:8px;">
+                        <span style="font-size:12px;color:#6b7280;">전사 TO</span>
+                        <span id="totalTO" style="font-size:13px;font-weight:700;color:#2563eb;">-</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#f9fafb;border-radius:8px;">
+                        <span style="font-size:12px;color:#6b7280;">전사 PO</span>
+                        <span id="totalPO" style="font-size:13px;font-weight:700;color:#16a34a;">-</span>
+                    </div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#f9fafb;border-radius:8px;">
+                        <span style="font-size:12px;color:#6b7280;">결원</span>
+                        <span id="totalShortage" style="font-size:13px;font-weight:700;color:#dc2626;">-</span>
+                    </div>
+                </div>
+                <button id="downloadBtn" disabled style="width:100%;margin-top:10px;background:#2563eb;color:white;border:none;padding:8px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;opacity:0.4;">
+                    <i class="fas fa-download" style="margin-right:4px;"></i>Excel 다운로드
+                </button>
+            </div>
+            <div style="padding:16px;">
+                <p style="font-size:11px;font-weight:700;color:#6b7280;margin-bottom:8px;"><i class="fas fa-info-circle" style="color:#93c5fd;margin-right:4px;"></i>처리 규칙</p>
+                <ul style="font-size:11px;color:#9ca3af;line-height:1.8;">
+                    <li>* 재직자 휴직자 모두 포함</li>
+                    <li>* 기간제 계약직 분류</li>
+                    <li>* TO/PO 자동 계산</li>
+                    <li>* 결원 표시 (빨강) / 초과 (파랑)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+<!-- 설정 페이지 -->
+<div id="page-settings" class="page">
+    <div class="bg-gray-50 p-8 min-h-screen">
+        <div class="max-w-6xl mx-auto">
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-800 mb-2"><i class="fas fa-cog text-blue-600 mr-2"></i>설정 관리</h1>
+                    <p class="text-gray-600">제외 인원, 특수 매핑, 부서별 TO를 관리하세요</p>
+                </div>
+                <button onclick="showPage('home')" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"><i class="fas fa-home mr-2"></i>홈으로</button>
+            </div>
+            <div class="bg-white rounded-xl shadow-lg overflow-hidden mb-8">
+                <div class="flex border-b overflow-x-auto">
+                    <button class="tab-btn active flex-1 px-4 py-4 text-left font-semibold hover:bg-gray-50 border-b-4 border-blue-600 whitespace-nowrap" data-tab="exclude"><i class="fas fa-user-slash mr-2"></i>제외 인원</button>
+                    <button class="tab-btn flex-1 px-4 py-4 text-left font-semibold hover:bg-gray-50 border-b-4 border-transparent whitespace-nowrap" data-tab="mapping"><i class="fas fa-map-marked-alt mr-2"></i>특수 매핑</button>
+                    <button class="tab-btn flex-1 px-4 py-4 text-left font-semibold hover:bg-gray-50 border-b-4 border-transparent whitespace-nowrap" data-tab="department-to"><i class="fas fa-sitemap mr-2"></i>부서별 TO</button>
+                </div>
+                <div id="tab-exclude" class="tab-content p-8">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">제외 인원 관리</h2>
+                    <div class="mb-8">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3"><i class="fas fa-ban text-red-600 mr-2"></i>영구 제외</h3>
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="permanentName" placeholder="이름 입력" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button id="addPermanent" class="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700"><i class="fas fa-plus mr-2"></i>추가</button>
+                        </div>
+                        <div id="permanentList" class="space-y-2"></div>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-700 mb-3"><i class="fas fa-clock text-orange-600 mr-2"></i>임시 제외</h3>
+                        <div class="flex gap-2 mb-3">
+                            <input type="text" id="tempName" placeholder="이름 입력" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <input type="date" id="tempUntil" class="border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button id="addTemp" class="bg-orange-600 text-white px-6 py-2 rounded-lg hover:bg-orange-700"><i class="fas fa-plus mr-2"></i>추가</button>
+                        </div>
+                        <div id="tempList" class="space-y-2"></div>
+                    </div>
+                </div>
+                <div id="tab-mapping" class="tab-content p-8 hidden">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">특수 인원 매핑</h2>
+                    <p class="text-gray-600 mb-4">특정 인원을 지정된 부서로 매핑합니다</p>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="mappingName" placeholder="이름" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="text" id="mappingTarget" placeholder="대상 부서" class="flex-1 border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="addMapping" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"><i class="fas fa-plus mr-2"></i>추가</button>
+                    </div>
+                    <div id="mappingList" class="space-y-2"></div>
+                </div>
+                <div id="tab-department-to" class="tab-content p-8 hidden">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-6">부서별 TO 관리</h2>
+                    <div class="bg-blue-50 border-2 border-blue-200 rounded-xl p-6 mb-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4"><i class="fas fa-plus-circle text-blue-600 mr-2"></i>조직 추가</h3>
+                        <div class="grid md:grid-cols-4 gap-3 mb-3">
+                            <select id="deptLevel" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">레벨 선택</option>
+                                <option value="company">안국약품 (회장/사장)</option>
+                                <option value="bumun">부문</option>
+                                <option value="bonbu">본부</option>
+                                <option value="sil">실/사업부</option>
+                                <option value="team">팀</option>
+                            </select>
+                            <input type="text" id="deptName" placeholder="조직명" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <select id="deptParent" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">상위 조직 선택</option>
+                            </select>
+                            <input type="number" id="deptOrder" placeholder="순서" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" value="1">
+                        </div>
+                        <div class="grid md:grid-cols-4 gap-3 mb-3">
+                            <input type="number" id="deptTORegular" placeholder="TO 정규직" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" value="0">
+                            <input type="number" id="deptTOContract" placeholder="TO 계약직" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" value="0">
+                            <input type="number" id="deptTODispatch" placeholder="TO 파견직" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" value="0">
+                            <input type="text" id="deptNote" placeholder="비고" class="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <button id="addDepartment" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 w-full"><i class="fas fa-plus mr-2"></i>조직 추가</button>
+                    </div>
+                    <div class="bg-white border-2 border-gray-200 rounded-xl overflow-hidden">
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-100">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">순서</th>
+                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">레벨</th>
+                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">조직명</th>
+                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">상위 조직</th>
+                                        <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700">TO 정규</th>
+                                        <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700">TO 계약</th>
+                                        <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700">TO 파견</th>
+                                        <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700">TO 합계</th>
+                                        <th class="px-4 py-3 text-left text-sm font-semibold text-gray-700">비고</th>
+                                        <th class="px-4 py-3 text-center text-sm font-semibold text-gray-700">작업</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="departmentList" class="divide-y divide-gray-200"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+<!-- 주간보고 인력현황 페이지 -->
+<div id="page-weekly" class="page">
+    <div class="bg-white shadow-sm px-6 py-3 flex items-center justify-between" style="height:52px;">
+        <div class="flex items-center gap-3">
+            <button onclick="showPage('home')" class="text-gray-400 hover:text-gray-600"><i class="fas fa-home"></i></button>
+            <span class="text-gray-300">/</span>
+            <h1 class="text-lg font-bold text-gray-800"><i class="fas fa-chart-bar text-green-600 mr-2"></i>주간보고 인력현황</h1>
+        </div>
+    </div>
+    <div style="display:flex;height:calc(100vh - 52px);">
+        <!-- 표 영역 -->
+        <div style="flex:1;overflow:auto;padding:16px;">
+            <div id="weeklyTableArea">
+                <div style="text-align:center;padding:80px;color:#9ca3af;">
+                    <i class="fas fa-chart-bar" style="font-size:48px;margin-bottom:12px;display:block;"></i>
+                    당월 및 전월말 사원명부를 업로드하고 집계 버튼을 누르세요
+                </div>
+            </div>
+        </div>
+        <!-- 업로드 패널 -->
+        <div style="width:260px;background:white;border-left:1px solid #e5e7eb;padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:12px;">
+            <!-- 당월 -->
+            <div>
+                <p class="text-sm font-bold text-gray-700 mb-2"><i class="fas fa-calendar-check text-blue-500 mr-1"></i>당월 사원명부</p>
+                <div id="wkCurDrop" style="border:2px dashed #93c5fd;border-radius:8px;padding:12px;text-align:center;cursor:pointer;">
+                    <i class="fas fa-cloud-upload-alt" style="font-size:20px;color:#93c5fd;display:block;margin-bottom:4px;"></i>
+                    <span style="font-size:11px;color:#6b7280;">.xls / .xlsx</span>
+                    <input type="file" id="wkCurFile" accept=".xls,.xlsx" style="display:none;">
+                </div>
+                <div id="wkCurInfo" style="display:none;margin-top:6px;padding:7px;background:#eff6ff;border-radius:6px;font-size:11px;color:#1d4ed8;">
+                    <i class="fas fa-file-excel mr-1"></i><span id="wkCurName"></span>
+                </div>
+            </div>
+            <!-- 전월말 -->
+            <div>
+                <p class="text-sm font-bold text-gray-700 mb-2"><i class="fas fa-calendar-minus text-orange-500 mr-1"></i>전월말 사원명부</p>
+                <div id="wkPrevDrop" style="border:2px dashed #fdba74;border-radius:8px;padding:12px;text-align:center;cursor:pointer;">
+                    <i class="fas fa-cloud-upload-alt" style="font-size:20px;color:#fdba74;display:block;margin-bottom:4px;"></i>
+                    <span style="font-size:11px;color:#6b7280;">.xls / .xlsx</span>
+                    <input type="file" id="wkPrevFile" accept=".xls,.xlsx" style="display:none;">
+                </div>
+                <div id="wkPrevInfo" style="display:none;margin-top:6px;padding:7px;background:#fff7ed;border-radius:6px;font-size:11px;color:#c2410c;">
+                    <i class="fas fa-file-excel mr-1"></i><span id="wkPrevName"></span>
+                </div>
+            </div>
+            <button id="wkCalcBtn" disabled style="width:100%;background:#16a34a;color:white;border:none;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;opacity:0.4;">
+                <i class="fas fa-calculator mr-1"></i>집계하기
+            </button>
+            <button id="wkDownloadBtn" disabled style="width:100%;background:#2563eb;color:white;border:none;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;opacity:0.4;">
+                <i class="fas fa-download mr-1"></i>Excel 다운로드
+            </button>
+
+            <!-- 노션 연동 영역 -->
+            <div style="border-top:1px solid #e5e7eb;padding-top:12px;">
+                <p class="text-sm font-bold text-gray-700 mb-2"><i class="fab fa-notion mr-1" style="color:#000;"></i>노션 저장</p>
+                <div style="margin-bottom:8px;">
+                    <label style="font-size:11px;color:#6b7280;display:block;margin-bottom:3px;">Notion API Key</label>
+                    <input id="notionApiKey" type="password" placeholder="secret_xxxxxxxxxxxx"
+                        style="width:100%;padding:6px 8px;border:1px solid #d1d5db;border-radius:6px;font-size:11px;box-sizing:border-box;"
+                        oninput="saveNotionKey(this.value)">
+                </div>
+                <button id="wkNotionBtn" disabled
+                    style="width:100%;background:#000;color:white;border:none;padding:9px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;opacity:0.4;display:flex;align-items:center;justify-content:center;gap:6px;">
+                    <i class="fas fa-cloud-upload-alt"></i>노션에 저장
+                </button>
+                <div id="notionSaveStatus" style="display:none;margin-top:6px;padding:7px;border-radius:6px;font-size:11px;text-align:center;"></div>
+            </div>
+
+            <div style="padding:10px;background:#f9fafb;border-radius:8px;font-size:11px;color:#6b7280;line-height:1.7;">
+                <p style="font-weight:700;color:#374151;margin-bottom:4px;"><i class="fas fa-info-circle text-blue-400 mr-1"></i>처리 규칙</p>
+                <ul>
+                    <li>* 재직·휴직자 모두 포함</li>
+                    <li>* 직책별 인원 집계</li>
+                    <li>* 부서별 TO 설정 반영</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- 로딩 -->
+<div id="loading" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:50;">
+    <div style="background:white;border-radius:16px;padding:32px;text-align:center;">
+        <i class="fas fa-spinner fa-spin" style="font-size:40px;color:#3b82f6;display:block;margin-bottom:12px;"></i>
+        <p style="font-size:16px;font-weight:600;color:#374151;">처리 중...</p>
+    </div>
+</div>
+
+
+
+
+<script>
+var STORAGE_KEY = 'hr_settings';
+var orgData = {};
+
+// ═══════════════════════════════════════════════════════
+//  노션 연동
+// ═══════════════════════════════════════════════════════
+var NOTION_DB_ID = '92e99306-cd1a-4676-901a-8c7b3536d373'; // 주간 인력현황 데이터 DB
+
+function saveNotionKey(val) {
+    localStorage.setItem('notion_api_key', val.trim());
+}
+function getNotionKey() {
+    return localStorage.getItem('notion_api_key') || '';
+}
+
+// 집계 결과 → 노션 저장용 행 배열 변환
+// WEEKLY_ROWS 기반으로 부문별 행 + 부문계 + 전사 총계 생성
+function buildNotionRows(curC, prevC, refDate) {
+    function zeroRow(){return{bm:0,bb:0,sb:0,tj:0,tw:0,total:0,to:0};}
+    var rows = [];
+
+    // 부문 매핑 (코드의 bumun 값 → DB select 옵션값)
+    var bumunMap = {
+        null:              '대표이사/직속',
+        '경영지원부문':    '경영지원부문',
+        '연구/개발부문':   '연구/개발부문',
+        '생산부문':        '생산부문',
+        '영업/마케팅부문': '영업부문'
+    };
+
+    // 직속 행
+    WEEKLY_ROWS.filter(function(r){return r.bumun===null;}).forEach(function(rd){
+        var c = curC[rd.key]||zeroRow();
+        var p = prevC?(prevC[rd.key]||zeroRow()):zeroRow();
+        rows.push({
+            항목명: rd.label,
+            부문: '대표이사/직속',
+            구분: rd.label,
+            당월인원: c.total,
+            전월인원: p.total,
+            전월대비: c.total - p.total,
+            TO: c.to,
+            결원: c.total - c.to,
+            기준일자: refDate
+        });
+    });
+
+    // 부문별
+    var bumunOrder = ['경영지원부문','연구/개발부문','생산부문','영업/마케팅부문'];
+    bumunOrder.forEach(function(bumun){
+        var bumunRows = WEEKLY_ROWS.filter(function(r){return r.bumun===bumun;});
+        var subC=zeroRow(), subP=0;
+        bumunRows.forEach(function(rd){
+            var c = curC[rd.key]||zeroRow();
+            var p = prevC?(prevC[rd.key]||zeroRow()):zeroRow();
+            subC.total+=c.total; subC.to+=c.to; subP+=p.total;
+            rows.push({
+                항목명: bumun+' > '+rd.label,
+                부문: bumunMap[bumun]||bumun,
+                구분: rd.label,
+                당월인원: c.total,
+                전월인원: p.total,
+                전월대비: c.total - p.total,
+                TO: c.to,
+                결원: c.total - c.to,
+                기준일자: refDate
+            });
+        });
+        // 부문 계
+        rows.push({
+            항목명: bumun+' 계',
+            부문: bumunMap[bumun]||bumun,
+            구분: '부문 계',
+            당월인원: subC.total,
+            전월인원: subP,
+            전월대비: subC.total - subP,
+            TO: subC.to,
+            결원: subC.total - subC.to,
+            기준일자: refDate
+        });
+    });
+
+    // 전사 총계
+    var allC=zeroRow(), allP=0;
+    WEEKLY_ROWS.forEach(function(rd){
+        var c=curC[rd.key]||zeroRow();
+        var p=prevC?(prevC[rd.key]||zeroRow()):zeroRow();
+        allC.total+=c.total; allC.to+=c.to; allP+=p.total;
+    });
+    rows.push({
+        항목명: '전사 합계',
+        부문: '전사합계',
+        구분: '총계',
+        당월인원: allC.total,
+        전월인원: allP,
+        전월대비: allC.total - allP,
+        TO: allC.to,
+        결원: allC.total - allC.to,
+        기준일자: refDate
+    });
+
+    return rows;
+}
+
+// 노션 API로 단일 행 생성
+function createNotionPage(apiKey, row) {
+    var body = {
+        parent: { database_id: NOTION_DB_ID },
+        properties: {
+            '항목명': { title: [{ text: { content: row.항목명 } }] },
+            '기준일자': { date: { start: row.기준일자 } },
+            '부문': { select: { name: row.부문 } },
+            '구분': { rich_text: [{ text: { content: row.구분 } }] },
+            '당월인원': { number: row.당월인원 },
+            '전월인원': { number: row.전월인원 },
+            '전월대비': { number: row.전월대비 },
+            'TO': { number: row.TO },
+            '결원': { number: row.결원 }
+        }
+    };
+    return fetch('https://api.notion.com/v1/pages', {
+        method: 'POST',
+        headers: {
+            'Authorization': 'Bearer ' + apiKey,
+            'Content-Type': 'application/json',
+            'Notion-Version': '2022-06-28'
+        },
+        body: JSON.stringify(body)
+    }).then(function(res){
+        if(!res.ok) return res.json().then(function(e){throw new Error(e.message||res.status);});
+        return res.json();
+    });
+}
+
+// 전체 저장 실행
+async function saveToNotion(curC, prevC) {
+    var apiKey = getNotionKey();
+    if(!apiKey){ alert('Notion API Key를 입력하세요.'); return; }
+
+    var today = new Date();
+    var refDate = today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+
+    var rows = buildNotionRows(curC, prevC, refDate);
+    var statusEl = document.getElementById('notionSaveStatus');
+    var btn = document.getElementById('wkNotionBtn');
+
+    statusEl.style.display='block';
+    statusEl.style.background='#eff6ff';
+    statusEl.style.color='#1d4ed8';
+    statusEl.textContent='저장 중... (0/'+rows.length+')';
+    btn.disabled=true; btn.style.opacity='0.6';
+
+    var errors = [];
+    for(var i=0; i<rows.length; i++){
+        try {
+            await createNotionPage(apiKey, rows[i]);
+            statusEl.textContent='저장 중... ('+(i+1)+'/'+rows.length+')';
+        } catch(err) {
+            errors.push(rows[i].항목명+': '+err.message);
+        }
+    }
+
+    btn.disabled=false; btn.style.opacity='1';
+    if(errors.length===0){
+        statusEl.style.background='#dcfce7';
+        statusEl.style.color='#166534';
+        statusEl.textContent='✅ '+rows.length+'개 행 저장 완료!';
+    } else {
+        statusEl.style.background='#fef2f2';
+        statusEl.style.color='#dc2626';
+        statusEl.textContent='⚠️ '+(rows.length-errors.length)+'개 성공, '+errors.length+'개 실패';
+        console.error('노션 저장 실패:', errors);
+    }
+}
+
+
+
+window.showPage = function(name) {
+    document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+    document.getElementById('page-'+name).classList.add('active');
+    if (name==='headcount') renderOrgTree();
+    if (name==='settings') { renderExcludeList(); renderMappingList(); renderDepartmentList(); }
+}
+
+
+// ═══════════════════════════════════════════════════════
+//  주간보고 인력현황
+// ═══════════════════════════════════════════════════════
+var wkCurrentEmps = null;
+var wkPrevEmps    = null;
+var wkCurCounts   = null;
+var wkPrevCounts  = null;
+
+// 행 정의: bumun=null → 회사 직속, group → 생산본부 같은 중간 그룹
+var WEEKLY_ROWS = [
+    {key:'daepyo',        label:'대표이사',  bumun:null,           group:null,
+     matchEmp:function(l,j){return j==='대표이사';},
+     toNames:['회장','사장']},
+    {key:'strategy',      label:'전략지원',  bumun:null,           group:null,
+     matchEmp:function(l,j){return l.indexOf('전략지원')>=0;}},
+    {key:'ethics',        label:'윤리경영',  bumun:null,           group:null,
+     matchEmp:function(l,j){return l.indexOf('윤리경영')>=0;}},
+    // 경영지원부문
+    {key:'mgmt_head',     label:'부문장',    bumun:'경영지원부문', group:null,
+     matchEmp:function(l,j){var s=l.split('>');return s[s.length-1]==='경영지원부문';}},
+    {key:'mgmt_strategy', label:'경영전략',  bumun:'경영지원부문', group:null,
+     matchEmp:function(l,j){return l.indexOf('경영전략본부')>=0;}},
+    {key:'mgmt_future',   label:'미래전략',  bumun:'경영지원부문', group:null,
+     matchEmp:function(l,j){return l.indexOf('미래전략실')>=0;}},
+    // 연구/개발부문
+    {key:'rd_head',       label:'부문장',    bumun:'연구/개발부문',group:null,
+     matchEmp:function(l,j){var s=l.split('>');return s[s.length-1]==='연구/개발부문';}},
+    {key:'rd_research',   label:'연구',      bumun:'연구/개발부문',group:null,
+     matchEmp:function(l,j){return l.indexOf('연구본부')>=0;}},
+    {key:'rd_dev',        label:'개발',      bumun:'연구/개발부문',group:null,
+     matchEmp:function(l,j){return l.indexOf('개발본부')>=0;}},
+    {key:'rd_bizdev',     label:'사업개발',  bumun:'연구/개발부문',group:null,
+     matchEmp:function(l,j){return l.indexOf('사업개발실')>=0;}},
+    // 생산부문
+    {key:'prod_head',     label:'부문장',    bumun:'생산부문',     group:null,
+     matchEmp:function(l,j){var s=l.split('>');return s[s.length-1]==='생산부문';}},
+    {key:'prod_prod',     label:'생산',      bumun:'생산부문',     group:'생산본부',
+     matchEmp:function(l,j){return l.indexOf('생산사업부')>=0||l.indexOf('생산실')>=0;}},
+    {key:'prod_quality',  label:'품질',      bumun:'생산부문',     group:'생산본부',
+     matchEmp:function(l,j){return l.indexOf('품질관리실')>=0||l.indexOf('품질사업부')>=0;}},
+    {key:'prod_support',  label:'지원',      bumun:'생산부문',     group:'생산본부',
+     matchEmp:function(l,j){
+         var s=l.split('>');
+         return l.indexOf('생산지원사업부')>=0||l.indexOf('공장운영팀')>=0||
+                l.indexOf('신공장구축팀')>=0||l.indexOf('신공장PM')>=0||
+                l.indexOf('신공장 PM')>=0||j==='신공장 PM'||
+                (l.indexOf('생산본부')>=0&&s[s.length-1]==='생산본부');
+     }},
+    // 영업/마케팅부문
+    {key:'sales_ch',      label:'CH',        bumun:'영업/마케팅부문',group:null,
+     matchEmp:function(l,j){return l.indexOf('CH본부')>=0;}},
+    {key:'sales_ext',     label:'대외협력',   bumun:'영업/마케팅부문',group:null,
+     matchEmp:function(l,j){return l.indexOf('대외협력본부')>=0;}},
+    {key:'sales_hb',      label:'H&B',       bumun:'영업/마케팅부문',group:null,
+     matchEmp:function(l,j){return l.indexOf('H&B사업부')>=0;}},
+    {key:'sales_beauty',  label:'피부미용',   bumun:'영업/마케팅부문',group:null,
+     matchEmp:function(l,j){return l.indexOf('피부미용사업부')>=0;}},
+    {key:'sales_dist',    label:'유통지원',   bumun:'영업/마케팅부문',group:null,
+     matchEmp:function(l,j){return l.indexOf('유통지원본부')>=0;}},
+];
+
+var BUMUN_ORDER = ['경영지원부문','연구/개발부문','생산부문','영업/마케팅부문'];
+
+// XLS 파싱 → 직원 배열 [{line, jik}]
+function parseWeeklyFile(file, settings) {
+    return new Promise(function(resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                var wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', codepage:949});
+                var ws = wb.Sheets[wb.SheetNames[0]];
+                var rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+                var hdrs = rows[0].map(function(h){return String(h).trim();});
+                var lineIdx   = hdrs.indexOf('소속라인');
+                var jikIdx    = hdrs.indexOf('직책');
+                var statusIdx = hdrs.indexOf('인사상태');
+                var nameIdx   = hdrs.indexOf('성명');
+                if(lineIdx<0||jikIdx<0) { reject(new Error('소속라인/직책 열을 찾을 수 없습니다')); return; }
+
+                var today = new Date().toISOString().split('T')[0];
+                var perEx = (settings&&settings.permanentExclude)||[];
+                var tmpEx = (settings&&settings.tempExclude)||[];
+                function isExcluded(name){
+                    if(!name) return false;
+                    if(perEx.indexOf(name)>=0) return true;
+                    return tmpEx.some(function(t){return t.name===name&&t.until>=today;});
+                }
+
+                var emps = [];
+                for(var i=1;i<rows.length;i++){
+                    var r=rows[i];
+                    var line   = String(r[lineIdx]||'').trim();
+                    var jik    = String(r[jikIdx]||'').trim();
+                    var status = statusIdx>=0?String(r[statusIdx]||'').trim():'';
+                    var name   = nameIdx>=0?String(r[nameIdx]||'').trim():'';
+                    if(!line&&!jik) continue;
+                    if(status&&status!=='재직'&&status!=='휴직') continue;
+                    if(isExcluded(name)) continue;
+                    emps.push({line:line, jik:jik});
+                }
+                resolve(emps);
+            } catch(err){ reject(err); }
+        };
+        reader.onerror=function(){reject(new Error('파일 읽기 실패'));};
+        reader.readAsArrayBuffer(file);
+    });
+}
+
+// 직책 → 열 키
+function wkJikCol(jik) {
+    if(jik==='부문장'||jik==='대표이사') return 'bm';   // 부문장
+    if(jik==='본부장')                   return 'bb';   // 본부장
+    if(jik==='사업부장'||jik==='실장'||jik==='신공장 PM') return 'sb'; // 사업부(실)장
+    if(jik==='팀장')                     return 'tj';   // 팀장
+    return 'tw';                                        // 팀원
+}
+
+// 집계
+function computeWeekly(emps, settings) {
+    var res = {};
+    WEEKLY_ROWS.forEach(function(rd){
+        res[rd.key]={bm:0,bb:0,sb:0,tj:0,tw:0,total:0,to:0};
+    });
+
+    // 인원 집계
+    emps.forEach(function(emp){
+        for(var i=0;i<WEEKLY_ROWS.length;i++){
+            var rd=WEEKLY_ROWS[i];
+            if(rd.matchEmp(emp.line, emp.jik)){
+                var col=wkJikCol(emp.jik);
+                res[rd.key][col]++;
+                break;
+            }
+        }
+    });
+    WEEKLY_ROWS.forEach(function(rd){
+        var r=res[rd.key];
+        r.total=r.bm+r.bb+r.sb+r.tj+r.tw;
+    });
+
+    // TO 집계: departmentTO 경로 기반
+    var depts = settings.departmentTO||[];
+    var pathCache = {};
+    function deptPath(name){
+        if(pathCache[name]) return pathCache[name];
+        var d=depts.find(function(x){return x.name===name;});
+        if(!d){pathCache[name]='안국약품>'+name;return pathCache[name];}
+        if(!d.parent){pathCache[name]='안국약품>'+name;return pathCache[name];}
+        pathCache[name]=deptPath(d.parent)+'>'+name;
+        return pathCache[name];
+    }
+    depts.forEach(function(d){deptPath(d.name);});
+
+    WEEKLY_ROWS.forEach(function(rd){
+        var toSum=0;
+        depts.forEach(function(dept){
+            var dTO=(dept.toRegular||0)+(dept.toContract||0)+(dept.toDispatch||0);
+            if(dTO===0) return;
+            if(rd.toNames){
+                if(rd.toNames.indexOf(dept.name)>=0) toSum+=dTO;
+            } else {
+                var p=pathCache[dept.name]||dept.name;
+                if(rd.matchEmp(p,'')) toSum+=dTO;
+            }
+        });
+        res[rd.key].to=toSum;
+    });
+    return res;
+}
+
+// 렌더링
+function renderWeeklyTable(curC, prevC) {
+    function zeroRow(){return {bm:0,bb:0,sb:0,tj:0,tw:0,total:0,to:0};}
+    function numTd(v){ return '<td>'+((v||0)===0?'':v)+'</td>'; }
+    function diffTd(v){
+        if(v>0) return '<td class="wpos">+'+v+'</td>';
+        if(v<0) return '<td class="wneg">'+v+'</td>';
+        return '<td></td>';
+    }
+    function dataRow(rd, trCls){
+        var c=curC[rd.key]||zeroRow();
+        var p=prevC?(prevC[rd.key]||zeroRow()):zeroRow();
+        var diff=c.total-p.total, toDiff=c.total-c.to;
+        var h='<tr'+(trCls?' class="'+trCls+'"':'')+'>';
+        h+='<td>'+rd.label+'</td>';
+        h+=numTd(c.bm)+numTd(c.bb)+numTd(c.sb)+numTd(c.tj)+numTd(c.tw);
+        h+='<td style="font-weight:700;">'+c.total+'</td>';
+        h+=numTd(p.total);
+        h+=diffTd(diff)+'<td>'+c.to+'</td>'+diffTd(toDiff);
+        h+='</tr>';
+        return h;
+    }
+    function subtotalRow(label, rows){
+        var c=zeroRow(), pTotal=0;
+        rows.forEach(function(rd){
+            var rc=curC[rd.key]||zeroRow();
+            var rp=prevC?(prevC[rd.key]||zeroRow()):zeroRow();
+            c.bm+=rc.bm;c.bb+=rc.bb;c.sb+=rc.sb;c.tj+=rc.tj;c.tw+=rc.tw;
+            c.total+=rc.total; c.to+=rc.to; pTotal+=rp.total;
+        });
+        var diff=c.total-pTotal, toDiff=c.total-c.to;
+        var h='<tr class="wrow-subtotal">';
+        h+='<td>'+label+'</td>';
+        h+=numTd(c.bm)+numTd(c.bb)+numTd(c.sb)+numTd(c.tj)+numTd(c.tw);
+        h+='<td style="font-weight:700;">'+c.total+'</td>';
+        h+=numTd(pTotal)+diffTd(diff)+'<td>'+c.to+'</td>'+diffTd(toDiff);
+        h+='</tr>';
+        return h;
+    }
+
+    var html='<div style="overflow:auto;">';
+    html+='<table class="weekly-table" style="min-width:700px;">';
+    html+='<thead><tr>';
+    html+='<th rowspan="2" style="width:80px;">구분</th>';
+    html+='<th colspan="5" style="background:#2F5496;">직책별 인원</th>';
+    html+='<th rowspan="2" style="width:50px;">당월</th>';
+    html+='<th rowspan="2" style="width:50px;">전월</th>';
+    html+='<th rowspan="2" style="width:55px;">전월<br>대비</th>';
+    html+='<th rowspan="2" style="width:45px;">TO</th>';
+    html+='<th rowspan="2" style="width:55px;">TO<br>대비</th>';
+    html+='</tr><tr>';
+    html+='<th style="width:48px;background:#BDD7EE;color:#000;">부문장</th>';
+    html+='<th style="width:48px;background:#BDD7EE;color:#000;">본부장</th>';
+    html+='<th style="width:55px;background:#BDD7EE;color:#000;">사업부<br>(실)장</th>';
+    html+='<th style="width:48px;background:#BDD7EE;color:#000;">팀장</th>';
+    html+='<th style="width:48px;background:#BDD7EE;color:#000;">팀원</th>';
+    html+='</tr></thead><tbody>';
+
+    // 회사 직속 행
+    WEEKLY_ROWS.filter(function(r){return r.bumun===null;}).forEach(function(rd){
+        html+=dataRow(rd,'');
+    });
+
+    // 부문별
+    BUMUN_ORDER.forEach(function(bumun){
+        var bumunRows=WEEKLY_ROWS.filter(function(r){return r.bumun===bumun;});
+        html+='<tr class="wrow-bumun"><td colspan="11">'+bumun+'</td></tr>';
+
+        // 그룹 없는 행 먼저
+        var noGroupRows=bumunRows.filter(function(r){return !r.group;});
+        noGroupRows.forEach(function(rd){html+=dataRow(rd,'');});
+
+        // 그룹별 (생산본부 등)
+        var groups={};
+        bumunRows.filter(function(r){return r.group;}).forEach(function(r){
+            if(!groups[r.group]) groups[r.group]=[];
+            groups[r.group].push(r);
+        });
+        Object.keys(groups).forEach(function(grp){
+            html+='<tr class="wrow-group"><td colspan="11">'+grp+'</td></tr>';
+            groups[grp].forEach(function(rd){html+=dataRow(rd,'');});
+        });
+
+        html+=subtotalRow('부문 계', bumunRows);
+    });
+
+    // 총계
+    var allC=zeroRow(), allP=0;
+    WEEKLY_ROWS.forEach(function(rd){
+        var c=curC[rd.key]||zeroRow();
+        var p=prevC?(prevC[rd.key]||zeroRow()):zeroRow();
+        allC.bm+=c.bm;allC.bb+=c.bb;allC.sb+=c.sb;allC.tj+=c.tj;allC.tw+=c.tw;
+        allC.total+=c.total;allC.to+=c.to; allP+=p.total;
+    });
+    var allDiff=allC.total-allP, allToDiff=allC.total-allC.to;
+    html+='<tr class="wrow-total">';
+    html+='<td>총계</td>';
+    html+=numTd(allC.bm)+numTd(allC.bb)+numTd(allC.sb)+numTd(allC.tj)+numTd(allC.tw);
+    html+='<td>'+allC.total+'</td>'+numTd(allP)+diffTd(allDiff)+'<td>'+allC.to+'</td>'+diffTd(allToDiff);
+    html+='</tr>';
+
+    html+='</tbody></table></div>';
+    return html;
+}
+
+// Excel 다운로드 — PPT 장표에 그대로 붙여넣기용 (B1:L25, 병합 없음)
+function downloadWeeklyExcel(curC, prevC) {
+    var wb = new ExcelJS.Workbook();
+    wb.creator='HR System'; wb.created=new Date();
+    var ws = wb.addWorksheet('주간보고');
+
+    ws.getColumn(2).width=16;  // B: 소속라인
+    ws.getColumn(3).width=8;   // C: 부문장
+    ws.getColumn(4).width=8;   // D: 본부장
+    ws.getColumn(5).width=10;  // E: 사업부(실)장
+    ws.getColumn(6).width=8;   // F: 팀장
+    ws.getColumn(7).width=8;   // G: 팀원
+    ws.getColumn(8).width=8;   // H: 당월
+    ws.getColumn(9).width=8;   // I: 전월
+    ws.getColumn(10).width=9;  // J: 전월대비
+    ws.getColumn(11).width=7;  // K: TO
+    ws.getColumn(12).width=9;  // L: TO 대비
+
+    function nv(v){return (v||0)===0?null:(v||0);}
+    function zeroRow(){return{bm:0,bb:0,sb:0,tj:0,tw:0,total:0,to:0};}
+    function sumKeys(keys){
+        var c=zeroRow(), pTotal=0;
+        keys.forEach(function(k){
+            var rc=curC[k]||zeroRow(), rp=prevC?(prevC[k]||zeroRow()):zeroRow();
+            c.bm+=rc.bm;c.bb+=rc.bb;c.sb+=rc.sb;c.tj+=rc.tj;c.tw+=rc.tw;
+            c.total+=rc.total;c.to+=rc.to; pTotal+=rp.total;
+        });
+        return {c:c,pTotal:pTotal};
+    }
+
+    // 헤더 행 1 (B1:L1)
+    ['소속라인','부문장','본부장','사업부(실)장','팀장','팀원','당월','전월','전월대비','TO','TO 대비'].forEach(function(h,i){
+        var cell=ws.getCell(1,i+2);
+        cell.value=h;
+        cell.font={size:10,bold:true};
+        cell.alignment={horizontal:'center',vertical:'middle'};
+    });
+
+    // 데이터 행 정의 (행 순서 = PPT 장표와 동일)
+    var ROWS=[
+        {label:'대표이사',       key:'daepyo',      sub:false},
+        {label:'전략지원',       key:'strategy',    sub:false},
+        {label:'윤리경영',       key:'ethics',      sub:false},
+        {label:'경영지원부문장', key:'mgmt_head',    sub:false},
+        {label:'경영전략',       key:'mgmt_strategy',sub:false},
+        {label:'미래전략',       key:'mgmt_future', sub:false},
+        {label:'부문 계',        key:null, sub:true, keys:['mgmt_head','mgmt_strategy','mgmt_future']},
+        {label:'연구/개발부문장',key:'rd_head',      sub:false},
+        {label:'연구',           key:'rd_research', sub:false},
+        {label:'개발',           key:'rd_dev',      sub:false},
+        {label:'사업개발',       key:'rd_bizdev',   sub:false},
+        {label:'부문 계',        key:null, sub:true, keys:['rd_head','rd_research','rd_dev','rd_bizdev']},
+        {label:'생산부문장',     key:'prod_head',   sub:false},
+        {label:'생산',           key:'prod_prod',   sub:false},
+        {label:'품질',           key:'prod_quality',sub:false},
+        {label:'생산지원',       key:'prod_support',sub:false},
+        {label:'부문 계',        key:null, sub:true, keys:['prod_head','prod_prod','prod_quality','prod_support']},
+        {label:'CH',             key:'sales_ch',    sub:false},
+        {label:'대외협력',       key:'sales_ext',   sub:false},
+        {label:'H&B',            key:'sales_hb',    sub:false},
+        {label:'피부미용',       key:'sales_beauty',sub:false},
+        {label:'유통지원',       key:'sales_dist',  sub:false},
+        {label:'부문 계',        key:null, sub:true, keys:['sales_ch','sales_ext','sales_hb','sales_beauty','sales_dist']},
+        {label:'총 계',          key:null, sub:true, keys:WEEKLY_ROWS.map(function(r){return r.key;})},
+    ];
+
+    ROWS.forEach(function(row,idx){
+        var rn=idx+2;
+        var bold=!!row.sub;
+        var c, prevTotal;
+        if(row.sub){
+            var s=sumKeys(row.keys); c=s.c; prevTotal=s.pTotal;
+        } else {
+            c=curC[row.key]||zeroRow();
+            prevTotal=prevC?(prevC[row.key]||zeroRow()).total:0;
+        }
+        var diff=c.total-prevTotal, toDiff=c.total-c.to;
+        function sc(col,val,color){
+            var cell=ws.getCell(rn,col);
+            cell.value=val;
+            var f={size:10,bold:bold};
+            if(color) f.color=color;
+            cell.font=f;
+            cell.alignment={horizontal:'center',vertical:'middle'};
+        }
+        var BLUE={argb:'FF305496'}, RED={argb:'FFC00000'};
+        sc(2,row.label);
+        sc(3,nv(c.bm)); sc(4,nv(c.bb)); sc(5,nv(c.sb)); sc(6,nv(c.tj)); sc(7,nv(c.tw));
+        sc(8,nv(c.total)); sc(9,nv(prevTotal));
+        sc(10,nv(diff),   diff>0?BLUE:diff<0?RED:null);
+        sc(11,nv(c.to));
+        sc(12,nv(toDiff), toDiff>0?BLUE:toDiff<0?RED:null);
+    });
+
+    return wb.xlsx.writeBuffer();
+}
+
+
+function getSettings() {
+    var saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return {"permanentExclude":["홍원기","홍희승"],"tempExclude":[],"specialMapping":[{"name":"최건영","target":"신공장PM"},{"name":"어진","target":"회장"},{"name":"박인철","target":"사장"}],"templates":{},"departmentTO":[{"level":"company","name":"회장","parent":null,"order":1,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"company","name":"사장","parent":null,"order":2,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"전략지원팀","parent":"사장","order":1,"toRegular":2,"toContract":0,"toDispatch":0,"note":""},{"level":"bonbu","name":"윤리경영본부","parent":"사장","order":2,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"준법감사팀","parent":"윤리경영본부","order":1,"toRegular":6,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"안전관리팀","parent":"윤리경영본부","order":2,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"bumun","name":"경영지원부문","parent":"사장","order":3,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"bonbu","name":"경영전략본부","parent":"경영지원부문","order":1,"toRegular":0,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"재경실","parent":"경영전략본부","order":1,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"재무팀","parent":"재경실","order":1,"toRegular":5,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"자금팀","parent":"재경실","order":2,"toRegular":2,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"전략정보실","parent":"경영전략본부","order":2,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"전략정보팀","parent":"전략정보실","order":1,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"총무팀","parent":"전략정보실","order":2,"toRegular":3,"toContract":1,"toDispatch":1,"note":""},{"level":"sil","name":"경영지원실","parent":"경영전략본부","order":3,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"전산팀","parent":"경영지원실","order":1,"toRegular":5,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"인사팀","parent":"경영지원실","order":2,"toRegular":10,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"미래전략실","parent":"경영지원부문","order":2,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"CD&I팀","parent":"미래전략실","order":1,"toRegular":4,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"기획팀","parent":"미래전략실","order":2,"toRegular":2,"toContract":0,"toDispatch":0,"note":""},{"level":"bumun","name":"연구/개발부문","parent":"사장","order":4,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"bonbu","name":"연구본부","parent":"연구/개발부문","order":1,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"제제연구실","parent":"연구본부","order":1,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"제제연구1팀","parent":"제제연구실","order":1,"toRegular":8,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"제제연구2팀","parent":"제제연구실","order":2,"toRegular":7,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"제제연구3팀","parent":"제제연구실","order":3,"toRegular":5,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"분석연구1팀","parent":"분석연구실","order":1,"toRegular":12,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"분석연구2팀","parent":"분석연구실","order":2,"toRegular":6,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"분석연구실","parent":"연구본부","order":2,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"R&DQA팀","parent":"연구본부","order":3,"toRegular":3,"toContract":1,"toDispatch":0,"note":""},{"level":"team","name":"연구협력팀","parent":"연구본부","order":4,"toRegular":2,"toContract":0,"toDispatch":0,"note":""},{"level":"bonbu","name":"개발본부","parent":"연구/개발부문","order":2,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"개발실","parent":"개발본부","order":1,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"개발팀","parent":"개발실","order":1,"toRegular":8,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"임상팀","parent":"임상실","order":1,"toRegular":5,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"PV팀","parent":"임상실","order":2,"toRegular":2,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"임상QA팀","parent":"임상실","order":3,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"메디컬실","parent":"개발본부","order":3,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"MSL팀","parent":"메디컬실","order":1,"toRegular":3,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"사업개발실","parent":"연구/개발부문","order":3,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"신제품기획팀","parent":"사업개발실","order":1,"toRegular":8,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"글로벌R&D팀","parent":"사업개발실","order":2,"toRegular":3,"toContract":0,"toDispatch":0,"note":""},{"level":"bumun","name":"생산부문","parent":"사장","order":5,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"bonbu","name":"생산본부","parent":"생산부문","order":1,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"공장운영팀","parent":"생산본부","order":1,"toRegular":7,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"신공장PM","parent":"생산본부","order":2,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"신공장구축팀","parent":"생산본부","order":3,"toRegular":4,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"생산지원사업부","parent":"생산본부","order":4,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"기획관리팀","parent":"생산지원사업부","order":1,"toRegular":6,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"물류팀","parent":"생산지원사업부","order":2,"toRegular":18,"toContract":1,"toDispatch":0,"note":""},{"level":"sil","name":"생산사업부","parent":"생산본부","order":5,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"설비기술팀","parent":"생산사업부","order":1,"toRegular":9,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"공정연구팀","parent":"생산사업부","order":2,"toRegular":9,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"생산1팀","parent":"생산실","order":1,"toRegular":38,"toContract":1,"toDispatch":0,"note":""},{"level":"team","name":"생산2팀","parent":"생산실","order":2,"toRegular":16,"toContract":9,"toDispatch":0,"note":""},{"level":"team","name":"포장팀","parent":"생산실","order":3,"toRegular":17,"toContract":16,"toDispatch":0,"note":""},{"level":"sil","name":"품질사업부","parent":"생산본부","order":7,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"품질보증1팀","parent":"품질사업부","order":1,"toRegular":16,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"품질보증2팀","parent":"품질사업부","order":2,"toRegular":12,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"DI팀","parent":"품질사업부","order":3,"toRegular":3,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"품질관리실","parent":"생산본부","order":8,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"품질관리1팀","parent":"품질관리실","order":1,"toRegular":16,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"품질관리2팀","parent":"품질관리실","order":2,"toRegular":17,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"품질관리3팀","parent":"품질관리실","order":3,"toRegular":17,"toContract":0,"toDispatch":0,"note":""},{"level":"bumun","name":"영업/마케팅부문","parent":"사장","order":6,"toRegular":0,"toContract":0,"toDispatch":0,"note":""},{"level":"bonbu","name":"CH본부","parent":"영업/마케팅부문","order":1,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"종합병원 1사업부","parent":"CH본부","order":1,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"수도권종합병원1팀","parent":"종합병원 1사업부","order":1,"toRegular":7,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"수도권종합병원2팀","parent":"종합병원 1사업부","order":2,"toRegular":6,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"종합병원 2사업부","parent":"CH본부","order":2,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"수도권종합병원3팀","parent":"종합병원 2사업부","order":1,"toRegular":5,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"수도권종합병원4팀","parent":"종합병원 2사업부","order":2,"toRegular":6,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"수도권종합병원5팀","parent":"종합병원 2사업부","order":3,"toRegular":5,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"종합병원 3사업부","parent":"CH본부","order":3,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"중호남종합병원1팀","parent":"종합병원 3사업부","order":1,"toRegular":8,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"중호남종합병원2팀","parent":"종합병원 3사업부","order":2,"toRegular":5,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"종합병원 4사업부","parent":"CH본부","order":4,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"영남종합병원1팀","parent":"종합병원 4사업부","order":1,"toRegular":11,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"영남종합병원2팀","parent":"종합병원 4사업부","order":2,"toRegular":5,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"마케팅지원사업부","parent":"CH본부","order":5,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"영업지원팀","parent":"마케팅지원사업부","order":1,"toRegular":3,"toContract":1,"toDispatch":1,"note":""},{"level":"team","name":"ETC1팀","parent":"마케팅지원사업부","order":2,"toRegular":4,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"ETC2팀","parent":"마케팅지원사업부","order":3,"toRegular":5,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"마케팅기획팀","parent":"마케팅지원사업부","order":4,"toRegular":3,"toContract":0,"toDispatch":0,"note":""},{"level":"bonbu","name":"대외협력본부","parent":"영업/마케팅부문","order":2,"toRegular":2,"toContract":1,"toDispatch":0,"note":""},{"level":"sil","name":"대외협력사업부","parent":"대외협력본부","order":1,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"수도권팀","parent":"대외협력사업부","order":1,"toRegular":3,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"강원팀","parent":"대외협력사업부","order":2,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"충청팀","parent":"대외협력사업부","order":3,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"마케팅팀","parent":"대외협력사업부","order":4,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"영남사업부","parent":"대외협력본부","order":2,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"H&B사업부","parent":"영업/마케팅부문","order":3,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"Healthcare1팀","parent":"H&B사업부","order":1,"toRegular":6,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"Healthcare2팀","parent":"H&B사업부","order":2,"toRegular":6,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"피부미용사업부","parent":"영업/마케팅부문","order":4,"toRegular":3,"toContract":0,"toDispatch":0,"note":""},{"level":"bonbu","name":"유통지원본부","parent":"영업/마케팅부문","order":5,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"도매팀","parent":"유통지원본부","order":1,"toRegular":5,"toContract":0,"toDispatch":0,"note":""},{"level":"team","name":"유통지원팀","parent":"유통지원본부","order":2,"toRegular":8,"toContract":0,"toDispatch":1,"note":""},{"level":"team","name":"구매팀","parent":"유통지원본부","order":3,"toRegular":6,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"임상실","parent":"개발본부","order":2,"toRegular":1,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"생산실","parent":"생산본부","order":6,"toRegular":0,"toContract":0,"toDispatch":0,"note":""},{"level":"sil","name":"호남사업부","parent":"대외협력본부","order":3,"toRegular":1,"toContract":0,"toDispatch":0,"note":""}]};
+    return JSON.parse(saved);
+}
+function saveSettings(s){ localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); }
+
+
+function sortByHierarchy(departments) {
+    var levelOrder={company:0,bumun:1,bonbu:2,sil:3,team:4};
+    var byParent={};
+    departments.forEach(function(dept){
+        var parent=dept.parent||null;
+        if(!byParent[parent]) byParent[parent]=[];
+        byParent[parent].push(dept);
+    });
+    function buildTree(parentName){
+        var children=byParent[parentName]||[];
+        children.sort(function(a,b){
+            var oa=a.order||999,ob=b.order||999;
+            if(oa!==ob) return oa-ob;
+            return a.name.localeCompare(b.name,'ko');
+        });
+        var result=[];
+        children.forEach(function(child){ result.push(child); result.push.apply(result,buildTree(child.name)); });
+        return result;
+    }
+    return buildTree(null);
+}
+
+
+function getPO(name){
+    var normalized=name.split(' ').join('');
+    return orgData[normalized]||orgData[name]||{regular:0,contract:0,dispatch:0};
+}
+
+
+function fmt(n){ return (n||0)===0?'-':(n||0); }
+
+
+function numCells(toReg,toCon,toDis,poReg,poCon,poDis,isBold){
+    var toTotal=(toReg||0)+(toCon||0)+(toDis||0);
+    var poTotal=(poReg||0)+(poCon||0)+(poDis||0);
+    var shortage=toTotal-poTotal;
+    var sc=shortage>0?'cell-shortage-pos':shortage<0?'cell-shortage-neg':'cell-shortage-zero';
+    var bStyle=isBold?'font-weight:700;':'font-weight:normal;';
+    return '<td class="cell-num cell-to-start">'+fmt(toReg)+'</td>'
+        +'<td class="cell-num">'+fmt(toCon)+'</td>'
+        +'<td class="cell-num">'+fmt(toDis)+'</td>'
+        +'<td class="cell-to-total">'+toTotal+'</td>'
+        +'<td class="cell-num cell-po-start">'+fmt(poReg)+'</td>'
+        +'<td class="cell-num">'+fmt(poCon)+'</td>'
+        +'<td class="cell-num">'+fmt(poDis)+'</td>'
+        +'<td class="cell-po-total">'+poTotal+'</td>'
+        +'<td class="'+sc+'" style="'+bStyle+'">'+shortage+'</td>';
+}
+
+
+function renderOrgTree(){
+    var settings=getSettings();
+    var tbody=document.getElementById('orgTableBody');
+    if(!settings.departmentTO||settings.departmentTO.length===0){
+        tbody.innerHTML='<tr><td colspan="13" style="text-align:center;padding:48px;color:#9ca3af;">조직 데이터가 없습니다.</td></tr>';
+        updateSummary(0,0,0,0,0,0); return;
+    }
+    var sorted=sortByHierarchy(settings.departmentTO);
+    var flatRows=[];
+
+    function pushSubtotal(level,labelName,bumunName,bonbuName,silName){
+        flatRows.push({type:'subtotal',subtotalLevel:level,name:labelName+' 계',
+            bumunName:bumunName||null,bonbuName:bonbuName||null,silName:silName||null,
+            toReg:0,toCon:0,toDis:0,poReg:0,poCon:0,poDis:0});
+    }
+
+    function buildFlat(dept,bumunName,bonbuName,silName){
+        var allChildren=sorted.filter(function(d){return d.parent===dept.name;});
+        var children = allChildren.slice().sort(function(a,b){
+            return (a.order||999) - (b.order||999);
+        });
+        var hasChildren=children.length>0;
+
+        if(dept.level==='company'){
+            var po=getPO(dept.name);
+            flatRows.push({type:'company',name:dept.name,
+                toReg:dept.toRegular||0,toCon:dept.toContract||0,toDis:dept.toDispatch||0,
+                poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                bumunName:null,bonbuName:null,silName:null});
+            children.forEach(function(c){buildFlat(c,null,null,null);});
+
+        } else if(dept.level==='bumun'){
+            var bName=dept.name;
+            var po=getPO(dept.name);
+            // bumun-row는 flatRows에 넣되, 렌더링 시 skip
+            flatRows.push({type:'bumun-row',name:dept.name,
+                toReg:dept.toRegular||0,toCon:dept.toContract||0,toDis:dept.toDispatch||0,
+                poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                bumunName:bName,bonbuName:null,silName:null});
+            children.forEach(function(child){
+                if(child.level==='bonbu' || child.level==='sil'){
+                    buildFlat(child,bName,null,null);
+                } else if(child.level==='team'){
+                    var po=getPO(child.name);
+                    flatRows.push({type:'team',name:child.name,
+                        toReg:child.toRegular||0,toCon:child.toContract||0,toDis:child.toDispatch||0,
+                        poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                        bumunName:bName,bonbuName:null,silName:null});
+                }
+            });
+            if(hasChildren) pushSubtotal('bumun',bName,bName,null,null);
+
+        } else if(dept.level==='bonbu'){
+            var bName=bumunName;
+            var boName=dept.name;
+            var po=getPO(dept.name);
+            flatRows.push({type:'bonbu-row',name:dept.name,
+                toReg:dept.toRegular||0,toCon:dept.toContract||0,toDis:dept.toDispatch||0,
+                poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                bumunName:bName,bonbuName:boName,silName:null});
+            children.forEach(function(child){
+                if(child.level==='sil'){
+                    buildFlat(child,bName,boName,null);
+                } else if(child.level==='team'){
+                    var po=getPO(child.name);
+                    flatRows.push({type:'team',name:child.name,
+                        toReg:child.toRegular||0,toCon:child.toContract||0,toDis:child.toDispatch||0,
+                        poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                        bumunName:bName,bonbuName:boName,silName:null});
+                }
+            });
+            if(hasChildren) pushSubtotal('bonbu',boName,bName,boName,null);
+
+        } else if(dept.level==='sil'){
+            var bName=bumunName;
+            var boName=bonbuName;
+            var sName=dept.name;
+            var po=getPO(dept.name);
+            var teamChildren=children.filter(function(c){return c.level==='team';});
+            if(teamChildren.length===0){
+                // 팀 자식 없는 실/사업부 → 실/사업부 열에 표시, 팀 열은 빈칸
+                flatRows.push({type:'team',name:'',
+                    toReg:dept.toRegular||0,toCon:dept.toContract||0,toDis:dept.toDispatch||0,
+                    poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                    bumunName:bName,bonbuName:boName,silName:sName});
+            } else {
+                flatRows.push({type:'sil-row',name:dept.name,
+                    toReg:dept.toRegular||0,toCon:dept.toContract||0,toDis:dept.toDispatch||0,
+                    poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                    bumunName:bName,bonbuName:boName,silName:sName});
+                teamChildren.forEach(function(team){
+                    var po=getPO(team.name);
+                    flatRows.push({type:'team',name:team.name,
+                        toReg:team.toRegular||0,toCon:team.toContract||0,toDis:team.toDispatch||0,
+                        poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                        bumunName:bName,bonbuName:boName,silName:sName});
+                });
+                pushSubtotal('sil',sName,bName,boName,sName);
+            }
+
+        } else if(dept.level==='team'){
+            var po=getPO(dept.name);
+            flatRows.push({type:'team',name:dept.name,
+                toReg:dept.toRegular||0,toCon:dept.toContract||0,toDis:dept.toDispatch||0,
+                poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                bumunName:bumunName,bonbuName:bonbuName,silName:silName});
+        }
+    }
+
+    sorted.filter(function(d){return !d.parent;}).forEach(function(root){buildFlat(root,null,null,null);});
+
+    // 소계 합산
+    var groupTotals={};
+    flatRows.forEach(function(row){
+        if(row.type==='subtotal') return;
+        function addTo(key){
+            if(!groupTotals[key]) groupTotals[key]={toReg:0,toCon:0,toDis:0,poReg:0,poCon:0,poDis:0};
+            groupTotals[key].toReg+=row.toReg; groupTotals[key].toCon+=row.toCon; groupTotals[key].toDis+=row.toDis;
+            groupTotals[key].poReg+=row.poReg; groupTotals[key].poCon+=row.poCon; groupTotals[key].poDis+=row.poDis;
+        }
+        if(row.silName)   addTo('sil:'+row.silName);
+        if(row.bonbuName) addTo('bonbu:'+row.bonbuName);
+        if(row.bumunName) addTo('bumun:'+row.bumunName);
+    });
+    flatRows.forEach(function(row){
+        if(row.type!=='subtotal') return;
+        var key='';
+        if(row.subtotalLevel==='sil')   key='sil:'+row.silName;
+        if(row.subtotalLevel==='bonbu') key='bonbu:'+row.bonbuName;
+        if(row.subtotalLevel==='bumun') key='bumun:'+row.bumunName;
+        var t=groupTotals[key]||{};
+        row.toReg=t.toReg||0; row.toCon=t.toCon||0; row.toDis=t.toDis||0;
+        row.poReg=t.poReg||0; row.poCon=t.poCon||0; row.poDis=t.poDis||0;
+    });
+
+    // 전사 합계
+    var totalTOReg=0,totalTOCon=0,totalTODis=0,totalPOReg=0,totalPOCon=0,totalPODis=0;
+    settings.departmentTO.forEach(function(dept){
+        totalTOReg+=dept.toRegular||0; totalTOCon+=dept.toContract||0; totalTODis+=dept.toDispatch||0;
+    });
+    Object.keys(orgData).forEach(function(key){
+        var po=orgData[key];
+        totalPOReg+=po.regular||0; totalPOCon+=po.contract||0; totalPODis+=po.dispatch||0;
+    });
+
+    // ★ 렌더링용 배열: bumun-row, bonbu-row, sil-row를 제거
+    var renderRows=flatRows.filter(function(r){
+        return r.type!=='bumun-row' && r.type!=='bonbu-row' && r.type!=='sil-row';
+    });
+
+    // rowspan 계산 (renderRows 기준)
+    function calcRowspan(rows,keyFn,colKey){
+        for(var i=0;i<rows.length;i++){
+            if(!rows[i]._rs) rows[i]._rs={};
+            var key=keyFn(rows[i]);
+            if(key===null||key===undefined){rows[i]._rs[colKey]=null;continue;}
+            if(rows[i]._rs[colKey]!==undefined) continue;
+            var isStart=(i===0)||(keyFn(rows[i-1])!==key);
+            if(!isStart){rows[i]._rs[colKey]=0;continue;}
+            var span=0;
+            for(var j=i;j<rows.length;j++){if(keyFn(rows[j])===key) span++; else break;}
+            rows[i]._rs[colKey]=span;
+            for(var j=i+1;j<i+span;j++){if(!rows[j]._rs) rows[j]._rs={}; rows[j]._rs[colKey]=0;}
+        }
+    }
+    renderRows.forEach(function(r){r._rs={};});
+    calcRowspan(renderRows,function(r){if(r.type==='subtotal'&&r.subtotalLevel==='bumun')return null;return r.bumunName||null;},'bumun');
+    calcRowspan(renderRows,function(r){if(r.type==='subtotal'&&r.subtotalLevel==='bonbu')return null;return r.bonbuName||null;},'bonbu');
+    calcRowspan(renderRows,function(r){if(r.type==='subtotal'&&r.subtotalLevel==='sil')return null;return r.silName||null;},'sil');
+
+    // HTML 생성
+    var html='';
+    html+='<tr class="row-total"><td colspan="4" style="text-align:center;font-weight:800;font-size:13px;padding:6px;border-right:2px solid #000;">전사 합계</td>'+numCells(totalTOReg,totalTOCon,totalTODis,totalPOReg,totalPOCon,totalPODis,true)+'</tr>';
+
+    var prevBumun=null;
+
+    renderRows.forEach(function(row,idx){
+        var rs=row._rs||{};
+        var nextRow=renderRows[idx+1];
+
+        if(row.type==='company'){
+            html+='<tr><td class="cell-team" colspan="4" style="text-align:center;font-weight:700;">'+row.name+'</td>'+numCells(row.toReg,row.toCon,row.toDis,row.poReg,row.poCon,row.poDis,false)+'</tr>';
+            prevBumun=null;
+            return;
+        }
+
+        if(row.type==='subtotal'){
+            var stClass='row-subtotal-'+row.subtotalLevel;
+            var isBumunBoundary=(nextRow && (nextRow.bumunName && nextRow.bumunName!==row.bumunName));
+            html+='<tr class="'+stClass+(isBumunBoundary?' bumun-start':'')+'">';
+            var lv=row.subtotalLevel;
+            // 부문 열
+            if(rs.bumun>0)        html+='<td class="cell-bumun" rowspan="'+rs.bumun+'">'+(row.bumunName||'')+'</td>';
+            else if(rs.bumun===0) html+='';
+            else if(lv!=='bumun') html+='<td class="cell-empty"></td>';
+            // 본부 열
+            if(rs.bonbu>0)        html+='<td class="cell-bonbu" rowspan="'+rs.bonbu+'">'+(row.bonbuName||'')+'</td>';
+            else if(rs.bonbu===0) html+='';
+            else if(lv!=='bonbu'&&lv!=='bumun') html+='<td class="cell-empty"></td>';
+            // 실 열 (label에 포함 안 될 경우만 렌더)
+            if(rs.sil>0)        html+='<td class="cell-sil" rowspan="'+rs.sil+'">'+(row.silName||'')+'</td>';
+            else if(rs.sil===0) html+='';
+            // rs.sil===null: label colspan에 포함
+            // 레이블 colspan 계산
+            var colspan=1;
+            if(rs.sil===null)                              colspan++; // +실
+            if((lv==='bonbu'||lv==='bumun')&&rs.bonbu===null) colspan++; // +본부
+            if(lv==='bumun'&&rs.bumun===null)              colspan++; // +부문
+            html+='<td class="cell-team" colspan="'+colspan+'" style="text-align:right;padding-right:12px;font-weight:700;">'+row.name+'</td>';
+            html+=numCells(row.toReg,row.toCon,row.toDis,row.poReg,row.poCon,row.poDis,true)+'</tr>';
+            prevBumun=row.bumunName;
+            return;
+        }
+
+        // 일반 팀 행
+        var isBumunStart=(row.bumunName && row.bumunName!==prevBumun);
+        // 실 시작 감지: 이전 행과 silName이 다르면 sil-start
+        var prevRow=idx>0?renderRows[idx-1]:null;
+        var isSilStart=row.silName && (!prevRow || prevRow.silName!==row.silName);
+        var isBonbuStart=row.bonbuName && (!prevRow || prevRow.bonbuName!==row.bonbuName);
+
+        var rowClasses=[];
+        if(isBumunStart) rowClasses.push('bumun-start');
+        if(isBonbuStart && !isBumunStart) rowClasses.push('bonbu-start');
+        if(isSilStart && !isBumunStart && !isBonbuStart) rowClasses.push('sil-start');
+        // 같은 실 내에서 연속된 팀 행이면 얇은 상단 구분선
+        if(!isBumunStart && !isBonbuStart && !isSilStart && prevRow && prevRow.type!=='subtotal') rowClasses.push('hair-top');
+
+        html+='<tr'+(rowClasses.length?' class="'+rowClasses.join(' ')+'"':'')+'>';
+        if(rs.bumun>0)           html+='<td class="cell-bumun" rowspan="'+rs.bumun+'">'+(row.bumunName||'')+'</td>';
+        else if(rs.bumun===0)    html+='';
+        else                     html+='<td class="cell-empty"></td>';
+        if(rs.bonbu>0)           html+='<td class="cell-bonbu" rowspan="'+rs.bonbu+'">'+(row.bonbuName||'')+'</td>';
+        else if(rs.bonbu===0)    html+='';
+        else                     html+='<td class="cell-empty"></td>';
+        if(rs.sil>0)             html+='<td class="cell-sil" rowspan="'+rs.sil+'">'+(row.silName||'')+'</td>';
+        else if(rs.sil===0)      html+='';
+        else                     html+='<td class="cell-empty"></td>';
+        html+='<td class="cell-team">'+row.name+'</td>';
+        html+=numCells(row.toReg,row.toCon,row.toDis,row.poReg,row.poCon,row.poDis,false)+'</tr>';
+        prevBumun=row.bumunName;
+    });
+
+    tbody.innerHTML=html;
+    updateSummary(totalTOReg,totalTOCon,totalTODis,totalPOReg,totalPOCon,totalPODis);
+}
+
+
+function updateSummary(toReg,toCon,toDis,poReg,poCon,poDis){
+    var totalTO=toReg+toCon+toDis, totalPO=poReg+poCon+poDis, shortage=totalTO-totalPO;
+    document.getElementById('totalTO').textContent=totalTO?totalTO+'명':'-';
+    document.getElementById('totalPO').textContent=totalPO?totalPO+'명':'-';
+    document.getElementById('totalShortage').textContent=(totalTO||totalPO)?shortage+'명':'-';
+}
+
+
+function setBtn(id,enabled){
+    var btn=document.getElementById(id);
+    btn.disabled=!enabled;
+    btn.style.opacity=enabled?'1':'0.4';
+    btn.style.cursor=enabled?'pointer':'not-allowed';
+}
+
+
+document.addEventListener('DOMContentLoaded',function(){
+    renderOrgTree();
+
+    /* ── 주간보고 버튼 ── */
+    document.getElementById('btn-weekly').addEventListener('click',function(){ showPage('weekly'); });
+
+    /* ── 주간보고: 파일 업로드 ── */
+    function setupWkDrop(dropId, inputId, infoId, nameId, onFile){
+        var drop=document.getElementById(dropId);
+        var inp=document.getElementById(inputId);
+        drop.addEventListener('click',function(){inp.click();});
+        drop.addEventListener('dragover',function(e){e.preventDefault();drop.style.borderColor='#3b82f6';});
+        drop.addEventListener('dragleave',function(){drop.style.borderColor='';});
+        drop.addEventListener('drop',function(e){
+            e.preventDefault();drop.style.borderColor='';
+            var f=e.dataTransfer.files[0]; if(f) onFile(f);
+        });
+        inp.addEventListener('change',function(){if(inp.files[0]) onFile(inp.files[0]);});
+    }
+    function updateWkBtn(){
+        var ok=(wkCurrentEmps!==null)&&(wkPrevEmps!==null);
+        var btn=document.getElementById('wkCalcBtn');
+        btn.disabled=!ok; btn.style.opacity=ok?'1':'0.4'; btn.style.cursor=ok?'pointer':'not-allowed';
+    }
+
+    setupWkDrop('wkCurDrop','wkCurFile','wkCurInfo','wkCurName',function(file){
+        parseWeeklyFile(file, getSettings()).then(function(emps){
+            wkCurrentEmps=emps;
+            document.getElementById('wkCurName').textContent=file.name;
+            document.getElementById('wkCurInfo').style.display='block';
+            updateWkBtn();
+        }).catch(function(err){ alert('당월 파일 오류: '+err.message); });
+    });
+    setupWkDrop('wkPrevDrop','wkPrevFile','wkPrevInfo','wkPrevName',function(file){
+        parseWeeklyFile(file, getSettings()).then(function(emps){
+            wkPrevEmps=emps;
+            document.getElementById('wkPrevName').textContent=file.name;
+            document.getElementById('wkPrevInfo').style.display='block';
+            updateWkBtn();
+        }).catch(function(err){ alert('전월말 파일 오류: '+err.message); });
+    });
+
+    document.getElementById('wkCalcBtn').addEventListener('click',function(){
+        if(!wkCurrentEmps||!wkPrevEmps) return;
+        document.getElementById('loading').style.display='flex';
+        setTimeout(function(){
+            try {
+                var settings=getSettings();
+                wkCurCounts=computeWeekly(wkCurrentEmps, settings);
+                wkPrevCounts=computeWeekly(wkPrevEmps, settings);
+                document.getElementById('weeklyTableArea').innerHTML=renderWeeklyTable(wkCurCounts, wkPrevCounts);
+                var dlBtn=document.getElementById('wkDownloadBtn');
+                dlBtn.disabled=false; dlBtn.style.opacity='1'; dlBtn.style.cursor='pointer';
+                // 노션 버튼 활성화
+                var notionBtn=document.getElementById('wkNotionBtn');
+                notionBtn.disabled=false; notionBtn.style.opacity='1'; notionBtn.style.cursor='pointer';
+                document.getElementById('notionSaveStatus').style.display='none';
+            } catch(err){ alert('집계 오류: '+err.message); }
+            finally{ document.getElementById('loading').style.display='none'; }
+        }, 50);
+    });
+
+    document.getElementById('wkNotionBtn').addEventListener('click',function(){
+        if(!wkCurCounts){ alert('먼저 집계하기를 눌러주세요.'); return; }
+        saveToNotion(wkCurCounts, wkPrevCounts);
+    });
+
+    document.getElementById('wkDownloadBtn').addEventListener('click',function(){
+        if(!wkCurCounts) return;
+        document.getElementById('loading').style.display='flex';
+        downloadWeeklyExcel(wkCurCounts, wkPrevCounts).then(function(buffer){
+            var blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+            var today=new Date();
+            var ds=today.getFullYear()+'.'+String(today.getMonth()+1).padStart(2,'0')+'.'+String(today.getDate()).padStart(2,'0');
+            var a=document.createElement('a');
+            a.href=URL.createObjectURL(blob);
+            a.download='주간보고_인력현황_'+ds+'.xlsx';
+            a.click();
+        }).catch(function(err){alert('다운로드 오류: '+err.message);})
+        .finally(function(){document.getElementById('loading').style.display='none';});
+    });
+
+    document.getElementById('refreshTree').addEventListener('click',function(){
+        orgData={}; renderOrgTree(); setBtn('downloadBtn',false); alert('새로고침 완료');
+    });
+
+    // 저장된 노션 API 키 복원
+    var savedKey = getNotionKey();
+    if(savedKey) document.getElementById('notionApiKey').value = savedKey;
+
+    var dropZone=document.getElementById('dropZone');
+    var fileInput=document.getElementById('fileInput');
+    var fileInfo=document.getElementById('fileInfo');
+    var selectedFile=null;
+
+    dropZone.addEventListener('click',function(){fileInput.click();});
+    dropZone.addEventListener('dragover',function(e){e.preventDefault();dropZone.style.borderColor='#3b82f6';dropZone.style.background='#eff6ff';});
+    dropZone.addEventListener('dragleave',function(){dropZone.style.borderColor='#d1d5db';dropZone.style.background='';});
+    dropZone.addEventListener('drop',function(e){e.preventDefault();dropZone.style.borderColor='#d1d5db';dropZone.style.background='';if(e.dataTransfer.files.length>0)handleFile(e.dataTransfer.files[0]);});
+    fileInput.addEventListener('change',function(e){if(e.target.files.length>0)handleFile(e.target.files[0]);});
+
+    function handleFile(file){
+        selectedFile=file;
+        document.getElementById('fileName').textContent=file.name;
+        document.getElementById('fileSize').textContent=(file.size/1024).toFixed(1)+' KB';
+        fileInfo.style.display='block';
+        setBtn('uploadBtn',true);
+    }
+
+    document.getElementById('removeFile').addEventListener('click',function(){
+        selectedFile=null; fileInput.value=''; fileInfo.style.display='none'; setBtn('uploadBtn',false);
+    });
+
+    document.getElementById('uploadBtn').addEventListener('click',function(){
+        if(!selectedFile) return;
+        document.getElementById('loading').style.display='flex';
+        setBtn('uploadBtn',false);
+        selectedFile.arrayBuffer().then(function(arrayBuffer){
+            var workbook=XLSX.read(arrayBuffer,{type:'array'});
+            var sheet=workbook.Sheets[workbook.SheetNames[0]];
+            var data=XLSX.utils.sheet_to_json(sheet);
+            var settings=getSettings();
+            function shouldExclude(name){
+                if(settings.permanentExclude&&settings.permanentExclude.includes(name)) return true;
+                if(settings.tempExclude){
+                    var now=new Date();
+                    return settings.tempExclude.some(function(t){return t.name===name&&new Date(t.until)>=now;});
+                }
+                return false;
+            }
+            var teamCounts={},excludedCount=0,chairmanCount=0,presidentCount=0;
+            data.forEach(function(row){
+                var name=row['성명'],line=row['소속라인']||'',team=row['소속'],position=row['직위']||row['직책']||'',employeeType=row['직원구분']||'정규직';
+                if(!name) return;
+                if(shouldExclude(name)){excludedCount++;return;}
+                if(position.includes('회장')||(position==='대표이사'&&name==='어진')){chairmanCount=1;return;}
+                if(position.includes('사장')||(position==='대표이사'&&name==='박인철')){presidentCount=1;return;}
+                if(settings.specialMapping){
+                    var mapping=settings.specialMapping.find(function(m){return m.name===name;});
+                    if(mapping){
+                        var key=mapping.target;
+                        if(!teamCounts[key]) teamCounts[key]={regular:0,contract:0,dispatch:0,total:0};
+                        var type=(employeeType.includes('계약')||employeeType.includes('기간제'))?'contract':employeeType.includes('파견')?'dispatch':'regular';
+                        teamCounts[key][type]++;teamCounts[key].total++;return;
+                    }
+                }
+                var parts=line.split('>').map(function(p){return p.trim();}).filter(function(p){return p&&p!=='안국약품';});
+                var lastPart=parts.length>0?parts[parts.length-1]:team;
+                if(lastPart){
+                    var normalized=lastPart.split(' ').join('');
+                    if(!teamCounts[normalized]) teamCounts[normalized]={regular:0,contract:0,dispatch:0,total:0};
+                    var type=(employeeType.includes('계약')||employeeType.includes('기간제'))?'contract':employeeType.includes('파견')?'dispatch':'regular';
+                    teamCounts[normalized][type]++;teamCounts[normalized].total++;
+                }
+            });
+            orgData={};
+            orgData['회장']={regular:chairmanCount,contract:0,dispatch:0,total:chairmanCount};
+            orgData['사장']={regular:presidentCount,contract:0,dispatch:0,total:presidentCount};
+            Object.keys(teamCounts).forEach(function(t){orgData[t]=teamCounts[t];});
+            renderOrgTree();
+            setBtn('downloadBtn',true);
+            alert('PO 계산 완료! 집계 조직: '+Object.keys(orgData).length+'개 / 제외: '+excludedCount+'명');
+        }).catch(function(err){
+            alert('오류: '+err.message);
+        }).finally(function(){
+            document.getElementById('loading').style.display='none';
+            setBtn('uploadBtn',true);
+        });
+    });
+
+    document.getElementById('downloadBtn').addEventListener('click',function(){
+        if(Object.keys(orgData).length===0){alert('먼저 사원명부를 업로드하세요.');return;}
+        document.getElementById('loading').style.display='flex';
+
+        try {
+            var settings=getSettings();
+
+            // ── 1. flatRows 재구성 (Excel용: sil-row를 팀 변환 없이 그대로 유지) ──
+            var excelRows=[];
+            var sorted=settings.departmentTO.slice().sort(function(a,b){return (a.order||999)-(b.order||999);});
+
+            function buildExcelFlat(dept,bumunName,bonbuName,silName){
+                var allChildren=sorted.filter(function(d){return d.parent===dept.name;});
+                var children=allChildren.slice().sort(function(a,b){return (a.order||999)-(b.order||999);});
+                var hasChildren=children.length>0;
+
+                if(dept.level==='company'){
+                    children.forEach(function(c){buildExcelFlat(c,null,null,null);});
+
+                } else if(dept.level==='bumun'){
+                    var bName=dept.name;
+                    var po=getPO(dept.name);
+                    excelRows.push({type:'bumun-row',name:dept.name,
+                        toReg:dept.toRegular||0,toCon:dept.toContract||0,toDis:dept.toDispatch||0,
+                        poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                        bumunName:bName,bonbuName:null,silName:null});
+                    children.forEach(function(child){
+                        if(child.level==='bonbu'||child.level==='sil') buildExcelFlat(child,bName,null,null);
+                        else if(child.level==='team'){
+                            var po2=getPO(child.name);
+                            excelRows.push({type:'team',name:child.name,
+                                toReg:child.toRegular||0,toCon:child.toContract||0,toDis:child.toDispatch||0,
+                                poReg:po2.regular||0,poCon:po2.contract||0,poDis:po2.dispatch||0,
+                                bumunName:bName,bonbuName:null,silName:null});
+                        }
+                    });
+                    if(hasChildren) excelRows.push({type:'subtotal',subtotalLevel:'bumun',name:bName+' 계',
+                        bumunName:bName,bonbuName:null,silName:null});
+
+                } else if(dept.level==='bonbu'){
+                    var bName=bumunName; var boName=dept.name;
+                    var po=getPO(dept.name);
+                    excelRows.push({type:'bonbu-row',name:dept.name,
+                        toReg:dept.toRegular||0,toCon:dept.toContract||0,toDis:dept.toDispatch||0,
+                        poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                        bumunName:bName,bonbuName:boName,silName:null});
+                    children.forEach(function(child){
+                        if(child.level==='sil') buildExcelFlat(child,bName,boName,null);
+                        else if(child.level==='team'){
+                            var po2=getPO(child.name);
+                            excelRows.push({type:'team',name:child.name,
+                                toReg:child.toRegular||0,toCon:child.toContract||0,toDis:child.toDispatch||0,
+                                poReg:po2.regular||0,poCon:po2.contract||0,poDis:po2.dispatch||0,
+                                bumunName:bName,bonbuName:boName,silName:null});
+                        }
+                    });
+                    if(hasChildren) excelRows.push({type:'subtotal',subtotalLevel:'bonbu',name:boName+' 계',
+                        bumunName:bName,bonbuName:boName,silName:null});
+
+                } else if(dept.level==='sil'){
+                    var bName=bumunName; var boName=bonbuName; var sName=dept.name;
+                    var po=getPO(dept.name);
+                    var teamChildren=children.filter(function(c){return c.level==='team';});
+                    if(teamChildren.length===0){
+                        // 팀 없는 사업부: 실/사업부 열에 독립 행으로
+                        excelRows.push({type:'sil-leaf',name:sName,
+                            toReg:dept.toRegular||0,toCon:dept.toContract||0,toDis:dept.toDispatch||0,
+                            poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                            bumunName:bName,bonbuName:boName,silName:sName});
+                    } else {
+                        excelRows.push({type:'sil-row',name:sName,
+                            toReg:dept.toRegular||0,toCon:dept.toContract||0,toDis:dept.toDispatch||0,
+                            poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                            bumunName:bName,bonbuName:boName,silName:sName});
+                        teamChildren.forEach(function(team){
+                            var po2=getPO(team.name);
+                            excelRows.push({type:'team',name:team.name,
+                                toReg:team.toRegular||0,toCon:team.toContract||0,toDis:team.toDispatch||0,
+                                poReg:po2.regular||0,poCon:po2.contract||0,poDis:po2.dispatch||0,
+                                bumunName:bName,bonbuName:boName,silName:sName});
+                        });
+                        excelRows.push({type:'subtotal',subtotalLevel:'sil',name:sName+' 계',
+                            bumunName:bName,bonbuName:boName,silName:sName});
+                    }
+                } else if(dept.level==='team'){
+                    var po=getPO(dept.name);
+                    excelRows.push({type:'team',name:dept.name,
+                        toReg:dept.toRegular||0,toCon:dept.toContract||0,toDis:dept.toDispatch||0,
+                        poReg:po.regular||0,poCon:po.contract||0,poDis:po.dispatch||0,
+                        bumunName:bumunName,bonbuName:bonbuName,silName:silName});
+                }
+            }
+
+            sorted.filter(function(d){return !d.parent;}).forEach(function(root){buildExcelFlat(root,null,null,null);});
+
+            // ── 2. 전사 합계 계산 ──
+            var totalTOReg=0,totalTOCon=0,totalTODis=0,totalPOReg=0,totalPOCon=0,totalPODis=0;
+            settings.departmentTO.forEach(function(d){
+                totalTOReg+=d.toRegular||0; totalTOCon+=d.toContract||0; totalTODis+=d.toDispatch||0;
+            });
+            Object.keys(orgData).forEach(function(k){
+                var p=orgData[k];
+                totalPOReg+=p.regular||0; totalPOCon+=p.contract||0; totalPODis+=p.dispatch||0;
+            });
+
+            // ── 3. ExcelJS 워크북 생성 ──
+            var wb=new ExcelJS.Workbook();
+            wb.creator='HR System'; wb.created=new Date();
+            var ws=wb.addWorksheet('인력현황',{pageSetup:{orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0}});
+
+            // 열 너비
+            ws.getColumn(1).width=4;   // A: 번호
+            ws.getColumn(2).width=12;  // B: 부문
+            ws.getColumn(3).width=14;  // C: 본부
+            ws.getColumn(4).width=16;  // D: 실/사업부
+            ws.getColumn(5).width=18;  // E: 팀
+            ws.getColumn(6).width=8;   // F: TO정규
+            ws.getColumn(7).width=8;   // G: TO계약
+            ws.getColumn(8).width=8;   // H: TO파견
+            ws.getColumn(9).width=8;   // I: TO계
+            ws.getColumn(10).width=8;  // J: PO정규
+            ws.getColumn(11).width=8;  // K: PO계약
+            ws.getColumn(12).width=8;  // L: PO파견
+            ws.getColumn(13).width=8;  // M: PO계
+            ws.getColumn(14).width=8;  // N: 결원
+
+            // 색상 상수
+            var cHeader ='FFD9E1F2'; // 헤더 파랑
+            var cBumun  ='FFFFF2CC'; // 부문계 노랑
+            var cBonbu  ='FFD9E1F2'; // 본부계 파랑
+            var cSil    ='FFF3F4F6'; // 실계 연회색
+            var cTotal  ='FFFFD966'; // 전사합계 주황
+            var cBumunRow='FFFFF2CC';
+            var cBonbuRow='FFD9E1F2';
+
+            function solidFill(argb){return {type:'pattern',pattern:'solid',fgColor:{argb:argb}};}
+            function applyFill(row,argb){
+                row.eachCell(function(cell){cell.fill=solidFill(argb);});
+            }
+            function borderThin(){return {style:'thin',color:{argb:'FF000000'}};}
+            function borderMedium(){return {style:'medium',color:{argb:'FF000000'}};}
+            function borderHair(){return {style:'hair',color:{argb:'FF9CA3AF'}};}
+            function borderDouble(){return {style:'double',color:{argb:'FF000000'}};}
+
+            function applyBorders(row, topStyle, bottomStyle){
+                row.eachCell(function(cell){
+                    cell.border={
+                        top: topStyle||borderThin(),
+                        bottom: bottomStyle||borderThin(),
+                        left: borderThin(),
+                        right: borderThin()
+                    };
+                });
+            }
+
+            function setCell(row, col, val, opts){
+                var c=row.getCell(col);
+                c.value=val;
+                c.alignment={horizontal:'center',vertical:'middle',wrapText:false};
+                if(opts&&opts.bold) c.font={bold:true};
+                return c;
+            }
+
+            // ── 4. 행 1: 제목 (B1:N1 병합) ──
+            var r1=ws.getRow(1);
+            r1.height=22;
+            var today=new Date();
+            var titleText='각 부서별 인력현황 ('+today.getFullYear()+'.'+String(today.getMonth()+1).padStart(2,'0')+'.'+String(today.getDate()).padStart(2,'0')+' 기준)';
+            setCell(r1,2,titleText,{bold:true});
+            ws.mergeCells('B1:N1');
+            r1.getCell(2).font={bold:true,size:13};
+            r1.getCell(2).alignment={horizontal:'center',vertical:'middle'};
+
+            // ── 5. 행 2-3: 헤더 ──
+            var r2=ws.getRow(2); r2.height=18;
+            var r3=ws.getRow(3); r3.height=18;
+
+            // 행 2 헤더 텍스트
+            ['No.','부문','본부','실/사업부','팀','T.O','','','','P.O','','','','결원'].forEach(function(v,i){
+                setCell(r2,i+1,v,{bold:true});
+            });
+            // 행 3 서브헤더
+            ['','','','','','정규직','계약직','파견직','계','정규직','계약직','파견직','계',''].forEach(function(v,i){
+                setCell(r3,i+1,v,{bold:true});
+            });
+
+            // 헤더 병합
+            ws.mergeCells('A2:A3'); // No
+            ws.mergeCells('B2:B3'); // 부문
+            ws.mergeCells('C2:C3'); // 본부
+            ws.mergeCells('D2:D3'); // 실/사업부
+            ws.mergeCells('E2:E3'); // 팀
+            ws.mergeCells('F2:I2'); // T.O
+            ws.mergeCells('J2:M2'); // P.O
+            ws.mergeCells('N2:N3'); // 결원
+
+            // 헤더 스타일
+            [r2,r3].forEach(function(row){
+                applyFill(row,cHeader);
+                applyBorders(row,borderThin(),borderThin());
+            });
+            // 행 3 하단 이중선
+            r3.eachCell(function(cell){
+                cell.border={top:borderThin(),bottom:borderDouble(),left:borderThin(),right:borderThin()};
+            });
+
+            // ── 6. 행 4: 전사 합계 ──
+            var r4=ws.getRow(4); r4.height=18;
+            var lastDataRow=4+excelRows.length; // 실제 마지막 행 (나중에 계산)
+            // SUBTOTAL 범위는 데이터 작성 후 채움: 우선 placeholder
+            setCell(r4,1,'',{bold:true});
+            setCell(r4,2,'전사 합계',{bold:true});
+            ws.mergeCells('B4:E4');
+            r4.getCell(2).alignment={horizontal:'center',vertical:'middle'};
+            applyFill(r4,cTotal);
+            r4.eachCell(function(cell){cell.font={bold:true};});
+
+            // ── 7. 데이터 행 작성 ──
+            var DATA_START=5; // 데이터 시작 엑셀 행 번호
+            // 각 subtotal 그룹의 시작 행을 추적
+            var groupStart={}; // key -> excel row number
+            // 병합 대기 목록 {col, startRow, endRow}
+            var merges=[];
+            // 부문/본부/실 병합 추적
+            var bumunMerge=null; // {name, startRow, col:2}
+            var bonbuMerge=null;
+            var silMerge=null;
+
+            var seqNo=1;
+            var colLetters=['','A','B','C','D','E','F','G','H','I','J','K','L','M','N'];
+
+            excelRows.forEach(function(row,idx){
+                var exR=DATA_START+idx;
+                var wsRow=ws.getRow(exR);
+                wsRow.height=16;
+
+                var type=row.type;
+                var isSubtotal=(type==='subtotal');
+                var isBumunRow=(type==='bumun-row');
+                var isBonbuRow=(type==='bonbu-row');
+                var isSilRow=(type==='sil-row');
+                var isSilLeaf=(type==='sil-leaf');
+                var isDataRow=(type==='team'||type==='sil-leaf');
+
+                // 그룹 시작 행 기록
+                if(isBumunRow){
+                    groupStart['bumun:'+row.bumunName]=exR;
+                } else if(isBonbuRow){
+                    groupStart['bonbu:'+row.bonbuName]=exR;
+                } else if(isSilRow){
+                    groupStart['sil:'+row.silName]=exR;
+                }
+
+                // 소계 행 처리
+                if(isSubtotal){
+                    var lv=row.subtotalLevel;
+                    var startKey=(lv==='sil')?'sil:'+row.silName:(lv==='bonbu')?'bonbu:'+row.bonbuName:'bumun:'+row.bumunName;
+                    var sRow=groupStart[startKey]||DATA_START;
+
+                    setCell(wsRow,1,'',{bold:true});
+
+                    // 조직명: 레벨에 따라 열 위치 다름
+                    if(lv==='bumun'){
+                        // 부문 계: B열에 '계', C-E 비움
+                        setCell(wsRow,2,row.name,{bold:true});
+                        [3,4,5].forEach(function(c){setCell(wsRow,c,'');});
+                    } else if(lv==='bonbu'){
+                        setCell(wsRow,2,'');
+                        setCell(wsRow,3,row.name,{bold:true});
+                        [4,5].forEach(function(c){setCell(wsRow,c,'');});
+                    } else {
+                        setCell(wsRow,2,''); setCell(wsRow,3,'');
+                        setCell(wsRow,4,row.name,{bold:true});
+                        setCell(wsRow,5,'');
+                    }
+
+                    // SUBTOTAL 수식 (F-N)
+                    var sr=sRow; var er=exR-1;
+                    ['F','G','H','I','J','K','L','M','N'].forEach(function(col,ci){
+                        var c=wsRow.getCell(6+ci);
+                        c.value={formula:'SUBTOTAL(9,'+col+sr+':'+col+er+')'};
+                        c.alignment={horizontal:'center',vertical:'middle'};
+                        c.font={bold:true};
+                    });
+
+                    // 소계 행 색상
+                    var fillArgb=(lv==='bumun')?cBumun:(lv==='bonbu')?cBonbu:cSil;
+                    applyFill(wsRow,fillArgb);
+                    wsRow.eachCell(function(cell){cell.font={bold:true};});
+                    applyBorders(wsRow,borderThin(),(lv==='bumun')?borderMedium():borderThin());
+
+                } else {
+                    // 일반 데이터 행 (team, sil-row, bonbu-row, bumun-row, sil-leaf)
+                    setCell(wsRow,1,isDataRow?seqNo:'');
+                    if(isDataRow) seqNo++;
+
+                    // 조직명 열 배치
+                    var bv=row.bumunName||''; var bov=row.bonbuName||'';
+                    var sv=row.silName||''; var tv=row.name||'';
+
+                    if(isBumunRow){
+                        setCell(wsRow,2,bv,{bold:true});
+                        [3,4,5].forEach(function(c){setCell(wsRow,c,'');});
+                    } else if(isBonbuRow){
+                        setCell(wsRow,2,'');
+                        setCell(wsRow,3,bov,{bold:true});
+                        [4,5].forEach(function(c){setCell(wsRow,c,'');});
+                    } else if(isSilRow){
+                        setCell(wsRow,2,''); setCell(wsRow,3,'');
+                        setCell(wsRow,4,sv,{bold:true}); setCell(wsRow,5,'');
+                    } else if(isSilLeaf){
+                        // 팀 없는 사업부: D열에 이름, E는 빈칸
+                        setCell(wsRow,2,''); setCell(wsRow,3,'');
+                        setCell(wsRow,4,sv); setCell(wsRow,5,'');
+                    } else {
+                        // team
+                        setCell(wsRow,2,''); setCell(wsRow,3,''); setCell(wsRow,4,'');
+                        setCell(wsRow,5,tv);
+                    }
+
+                    // TO 값 (F/G/H)
+                    wsRow.getCell(6).value=row.toReg||0;
+                    wsRow.getCell(7).value=row.toCon||0;
+                    wsRow.getCell(8).value=row.toDis||0;
+                    // I: SUM(F:H)
+                    wsRow.getCell(9).value={formula:'SUM(F'+exR+':H'+exR+')'};
+                    // PO 값 (J/K/L)
+                    wsRow.getCell(10).value=row.poReg||0;
+                    wsRow.getCell(11).value=row.poCon||0;
+                    wsRow.getCell(12).value=row.poDis||0;
+                    // M: SUM(J:L)
+                    wsRow.getCell(13).value={formula:'SUM(J'+exR+':L'+exR+')'};
+                    // N: M - I (결원 = PO - TO, 음수=부족)
+                    wsRow.getCell(14).value={formula:'M'+exR+'-I'+exR};
+
+                    // 숫자 셀 정렬
+                    for(var ci=6;ci<=14;ci++){
+                        wsRow.getCell(ci).alignment={horizontal:'center',vertical:'middle'};
+                    }
+
+                    // 행 색상 (bumun-row/bonbu-row 헤더 행)
+                    if(isBumunRow) applyFill(wsRow,cBumunRow);
+                    else if(isBonbuRow) applyFill(wsRow,cBonbuRow);
+
+                    applyBorders(wsRow,borderHair(),borderHair());
+                }
+
+                // 부문 병합 추적
+                var curBumun=row.bumunName||null;
+                var isBumunSub=(isSubtotal&&row.subtotalLevel==='bumun');
+                if(!isBumunSub){
+                    if(!bumunMerge||bumunMerge.name!==curBumun){
+                        if(bumunMerge&&bumunMerge.endRow>bumunMerge.startRow)
+                            merges.push({col:2,s:bumunMerge.startRow,e:bumunMerge.endRow});
+                        bumunMerge=curBumun?{name:curBumun,startRow:exR,endRow:exR}:null;
+                    } else { bumunMerge.endRow=exR; }
+                } else {
+                    if(bumunMerge) { bumunMerge.endRow=exR; }
+                }
+
+                // 본부 병합 추적
+                var curBonbu=row.bonbuName||null;
+                var isBonbuSub=(isSubtotal&&row.subtotalLevel==='bonbu');
+                if(!isBonbuSub){
+                    if(!bonbuMerge||bonbuMerge.name!==curBonbu){
+                        if(bonbuMerge&&bonbuMerge.endRow>bonbuMerge.startRow)
+                            merges.push({col:3,s:bonbuMerge.startRow,e:bonbuMerge.endRow});
+                        bonbuMerge=curBonbu?{name:curBonbu,startRow:exR,endRow:exR}:null;
+                    } else { bonbuMerge.endRow=exR; }
+                } else {
+                    if(bonbuMerge) { bonbuMerge.endRow=exR; }
+                }
+
+                // 실 병합 추적
+                var curSil=row.silName||null;
+                var isSilSub=(isSubtotal&&row.subtotalLevel==='sil');
+                if(!isSilSub){
+                    if(!silMerge||silMerge.name!==curSil){
+                        if(silMerge&&silMerge.endRow>silMerge.startRow)
+                            merges.push({col:4,s:silMerge.startRow,e:silMerge.endRow});
+                        silMerge=curSil?{name:curSil,startRow:exR,endRow:exR}:null;
+                    } else { silMerge.endRow=exR; }
+                } else {
+                    if(silMerge) { silMerge.endRow=exR; }
+                }
+            });
+
+            // 마지막 병합 flush
+            if(bumunMerge&&bumunMerge.endRow>bumunMerge.startRow)
+                merges.push({col:2,s:bumunMerge.startRow,e:bumunMerge.endRow});
+            if(bonbuMerge&&bonbuMerge.endRow>bonbuMerge.startRow)
+                merges.push({col:3,s:bonbuMerge.startRow,e:bonbuMerge.endRow});
+            if(silMerge&&silMerge.endRow>silMerge.startRow)
+                merges.push({col:4,s:silMerge.startRow,e:silMerge.endRow});
+
+            // 병합 적용
+            merges.forEach(function(m){
+                try{ ws.mergeCells(m.s,m.col,m.e,m.col); }catch(e){}
+            });
+
+            // ── 8. 전사 합계 수식 채우기 (행 4) ──
+            var lastRow=DATA_START+excelRows.length-1;
+            ['F','G','H','I','J','K','L','M','N'].forEach(function(col,ci){
+                var c=r4.getCell(6+ci);
+                c.value={formula:'SUBTOTAL(9,'+col+DATA_START+':'+col+lastRow+')'};
+                c.alignment={horizontal:'center',vertical:'middle'};
+                c.font={bold:true};
+            });
+            r4.eachCell(function(cell){
+                cell.border={top:borderDouble(),bottom:borderDouble(),left:borderThin(),right:borderThin()};
+            });
+
+            // ── 9. 다운로드 ──
+            wb.xlsx.writeBuffer().then(function(buffer){
+                var blob=new Blob([buffer],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+                var dateStr=today.getFullYear()+'.'+String(today.getMonth()+1).padStart(2,'0')+'.'+String(today.getDate()).padStart(2,'0');
+                var link=document.createElement('a');
+                link.href=URL.createObjectURL(blob);
+                link.download='각_부서별_인력현황_'+dateStr+'.xlsx';
+                link.click();
+                alert('Excel 다운로드 완료!');
+            }).catch(function(err){alert('오류: '+err.message);})
+            .finally(function(){document.getElementById('loading').style.display='none';});
+
+        } catch(err){
+            alert('오류: '+err.message);
+            document.getElementById('loading').style.display='none';
+        }
+    });
+
+    /* ── 설정 탭 ── */
+    document.querySelectorAll('.tab-btn').forEach(function(btn){
+        btn.addEventListener('click',function(){
+            var target=btn.dataset.tab;
+            document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('border-blue-600');b.classList.add('border-transparent');});
+            document.querySelectorAll('.tab-content').forEach(function(c){c.classList.add('hidden');});
+            btn.classList.add('border-blue-600');btn.classList.remove('border-transparent');
+            document.getElementById('tab-'+target).classList.remove('hidden');
+        });
+    });
+
+    document.getElementById('addPermanent').addEventListener('click',function(){
+        var name=document.getElementById('permanentName').value.trim();
+        if(!name){alert('이름을 입력하세요');return;}
+        var s=getSettings();if(s.permanentExclude.includes(name)){alert('이미 추가됨');return;}
+        s.permanentExclude.push(name);saveSettings(s);document.getElementById('permanentName').value='';renderExcludeList();
+    });
+    document.getElementById('addTemp').addEventListener('click',function(){
+        var name=document.getElementById('tempName').value.trim(),until=document.getElementById('tempUntil').value;
+        if(!name||!until){alert('이름과 날짜를 입력하세요');return;}
+        var s=getSettings();if(s.tempExclude.some(function(i){return i.name===name;})){alert('이미 추가됨');return;}
+        s.tempExclude.push({name:name,until:until});saveSettings(s);
+        document.getElementById('tempName').value='';document.getElementById('tempUntil').value='';renderExcludeList();
+    });
+    document.getElementById('addMapping').addEventListener('click',function(){
+        var name=document.getElementById('mappingName').value.trim(),target=document.getElementById('mappingTarget').value.trim();
+        if(!name||!target){alert('이름과 대상을 입력하세요');return;}
+        var s=getSettings();if(s.specialMapping.some(function(i){return i.name===name;})){alert('이미 추가됨');return;}
+        s.specialMapping.push({name:name,target:target});saveSettings(s);
+        document.getElementById('mappingName').value='';document.getElementById('mappingTarget').value='';renderMappingList();
+    });
+    document.getElementById('addDepartment').addEventListener('click',function(){
+        var level=document.getElementById('deptLevel').value,name=document.getElementById('deptName').value.trim();
+        var parent=document.getElementById('deptParent').value,order=parseInt(document.getElementById('deptOrder').value)||1;
+        var toRegular=parseInt(document.getElementById('deptTORegular').value)||0;
+        var toContract=parseInt(document.getElementById('deptTOContract').value)||0;
+        var toDispatch=parseInt(document.getElementById('deptTODispatch').value)||0;
+        var note=document.getElementById('deptNote').value.trim();
+        if(!level||!name){alert('레벨과 조직명은 필수입니다');return;}
+        var s=getSettings();if(!s.departmentTO)s.departmentTO=[];
+        if(s.departmentTO.some(function(d){return d.name===name;})){alert('이미 존재하는 조직명');return;}
+        s.departmentTO.push({level:level,name:name,parent:parent||null,order:order,toRegular:toRegular,toContract:toContract,toDispatch:toDispatch,note:note});
+        saveSettings(s);
+        ['deptLevel','deptName','deptNote'].forEach(function(id){document.getElementById(id).value='';});
+        ['deptTORegular','deptTOContract','deptTODispatch'].forEach(function(id){document.getElementById(id).value='0';});
+        document.getElementById('deptOrder').value='1';document.getElementById('deptParent').value='';
+        renderDepartmentList();renderOrgTree();alert('조직이 추가되었습니다!');
+    });
+});
+
+
+function renderExcludeList(){
+    var s=getSettings();
+    document.getElementById('permanentList').innerHTML=s.permanentExclude.map(function(name){
+        return '<div class="flex items-center justify-between bg-red-50 border border-red-200 rounded-lg px-4 py-3"><div class="flex items-center"><i class="fas fa-user-times text-red-600 mr-3"></i><span class="font-semibold">'+name+'</span><span class="ml-3 text-sm text-gray-600">(영구 제외)</span></div><button class="remove-permanent text-red-600 hover:text-red-800" data-name="'+name+'"><i class="fas fa-trash"></i></button></div>';
+    }).join('');
+    document.getElementById('tempList').innerHTML=s.tempExclude.map(function(item){
+        return '<div class="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-4 py-3"><div class="flex items-center"><i class="fas fa-user-clock text-orange-600 mr-3"></i><span class="font-semibold">'+item.name+'</span><span class="ml-3 text-sm text-gray-600">('+item.until+'까지)</span></div><button class="remove-temp text-orange-600 hover:text-orange-800" data-name="'+item.name+'"><i class="fas fa-trash"></i></button></div>';
+    }).join('');
+    document.querySelectorAll('.remove-permanent').forEach(function(btn){btn.addEventListener('click',function(){var s=getSettings();s.permanentExclude=s.permanentExclude.filter(function(n){return n!==btn.dataset.name;});saveSettings(s);renderExcludeList();});});
+    document.querySelectorAll('.remove-temp').forEach(function(btn){btn.addEventListener('click',function(){var s=getSettings();s.tempExclude=s.tempExclude.filter(function(i){return i.name!==btn.dataset.name;});saveSettings(s);renderExcludeList();});});
+}
+function renderMappingList(){
+    var s=getSettings();
+    document.getElementById('mappingList').innerHTML=s.specialMapping.map(function(item){
+        return '<div class="flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-4 py-3"><div class="flex items-center"><i class="fas fa-arrow-right text-blue-600 mr-3"></i><span class="font-semibold">'+item.name+'</span><i class="fas fa-long-arrow-alt-right text-gray-400 mx-3"></i><span class="text-blue-600 font-semibold">'+item.target+'</span></div><button class="remove-mapping text-red-600 hover:text-red-800" data-name="'+item.name+'"><i class="fas fa-trash"></i></button></div>';
+    }).join('');
+    document.querySelectorAll('.remove-mapping').forEach(function(btn){btn.addEventListener('click',function(){var s=getSettings();s.specialMapping=s.specialMapping.filter(function(i){return i.name!==btn.dataset.name;});saveSettings(s);renderMappingList();});});
+}
+function renderDepartmentList(){
+    var s=getSettings();
+    var list=document.getElementById('departmentList');
+    var parentSelect=document.getElementById('deptParent');
+    list.innerHTML='';
+    parentSelect.innerHTML='<option value="">상위 조직 선택</option>';
+    if(!s.departmentTO||s.departmentTO.length===0){list.innerHTML='<tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">등록된 조직이 없습니다</td></tr>';return;}
+    s.departmentTO.forEach(function(dept){if(dept.level!=='team') parentSelect.innerHTML+='<option value="'+dept.name+'">'+dept.name+'</option>';});
+    var levelStyles={company:{color:'text-red-600 font-bold',badge:'안국약품'},bumun:{color:'text-blue-900 font-bold',badge:'부문'},bonbu:{color:'text-blue-700 font-semibold',badge:'본부'},sil:{color:'text-blue-600',badge:'실'},team:{color:'text-gray-700',badge:'팀'}};
+    var sorted=sortByHierarchy(s.departmentTO);
+    sorted.forEach(function(dept,index){
+        var style=levelStyles[dept.level]||levelStyles.team;
+        var toReg=dept.toRegular||0,toCon=dept.toContract||0,toDis=dept.toDispatch||0;
+        var row=document.createElement('tr');row.className='hover:bg-gray-50';
+        row.innerHTML='<td class="px-4 py-3 text-center text-sm">'+(dept.order||'-')+'</td>'
+            +'<td class="px-4 py-3 text-sm"><span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">'+style.badge+'</span></td>'
+            +'<td class="px-4 py-3 text-sm '+style.color+'">'+dept.name+'</td>'
+            +'<td class="px-4 py-3 text-sm text-gray-600">'+(dept.parent||'-')+'</td>'
+            +'<td class="px-4 py-3 text-center text-sm">'+toReg+'</td>'
+            +'<td class="px-4 py-3 text-center text-sm">'+toCon+'</td>'
+            +'<td class="px-4 py-3 text-center text-sm">'+toDis+'</td>'
+            +'<td class="px-4 py-3 text-center font-bold text-blue-600">'+(toReg+toCon+toDis)+'</td>'
+            +'<td class="px-4 py-3 text-sm text-gray-500">'+(dept.note||'-')+'</td>'
+            +'<td class="px-4 py-3 text-center"><button onclick="deleteDepartment('+index+')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button></td>';
+        list.appendChild(row);
+    });
+}
+window.deleteDepartment=function(index){
+    if(!confirm('삭제하시겠습니까?'))return;
+    var s=getSettings();var sorted=sortByHierarchy(s.departmentTO);var target=sorted[index];
+    var orig=s.departmentTO.findIndex(function(d){return d.name===target.name&&d.level===target.level&&d.parent===target.parent;});
+    if(orig!==-1){s.departmentTO.splice(orig,1);saveSettings(s);renderDepartmentList();}
+};
+document.getElementById('btn-headcount').addEventListener('click',function(){showPage('headcount');});
+document.getElementById('btn-settings').addEventListener('click',function(){showPage('settings');});
+document.getElementById('btn-settings-2').addEventListener('click',function(){showPage('settings');});
+</script>
+</body>
+</html>
